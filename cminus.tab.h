@@ -89,11 +89,48 @@
     extern Escopo *escopo_atual;
     extern Escopo *lista_escopos;
 
+    /* ===== ESTRUTURA DA AST ===== */
+    typedef enum {STMTK, EXPK, VARK} NodeKind;
+    typedef enum {INTEGERK, VOIDK, IFK, WHILEK, RETURNK, COMPK} StmtKind;
+    typedef enum {OPK, CONSTK, IDK, ASSIGNK, CALLK, VECTORK} ExpKind;
+    typedef enum {DECLK, ACCESSK} VarAccessK;
+    
+    #define MAXCHILDREN 3
+    
+    typedef struct Identifier {
+        TipoSimbolo varKind;
+        VarAccessK acesso;
+        union {
+            int val;
+            char *name;
+        } attr;
+    } Identifier;
+    
+    typedef struct treeNode {
+        struct treeNode *child[MAXCHILDREN];
+        struct treeNode *sibling;
+        int lineno;
+        NodeKind nodekind;
+        union {
+            StmtKind stmt;
+            ExpKind exp;
+            struct Identifier var;
+        } kind;
+        int op;                    /* token para operadores */
+        TipoVar type;              /* tipo de dado */
+    } TreeNode;
+    
+    /* Funções para criar nós */
+    TreeNode* newStmtNode(StmtKind kind);
+    TreeNode* newExpNode(ExpKind kind);
+    TreeNode* newVarNode(ExpKind kind);
+    void printTree(TreeNode *tree, int indent);
+
 
 
 
 /* Line 1676 of yacc.c  */
-#line 97 "cminus.tab.h"
+#line 134 "cminus.tab.h"
 
 /* Tokens.  */
 #ifndef YYTOKENTYPE
@@ -138,7 +175,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 73 "cminusSintSem.y"
+#line 110 "cminusSintSem.y"
 
     int ival;
     char *id;
@@ -147,11 +184,12 @@ typedef union YYSTYPE
         TipoVar tipo;
         int is_array;
     } var_info;
+    TreeNode *node;
 
 
 
 /* Line 1676 of yacc.c  */
-#line 155 "cminus.tab.h"
+#line 193 "cminus.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
