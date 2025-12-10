@@ -35,7 +35,7 @@
 /* "%code requires" blocks.  */
 
 /* Line 1676 of yacc.c  */
-#line 16 "cminusSintSem.y"
+#line 18 "cminusSintSem.y"
 
     /* ===== TIPOS DE DADOS ===== */
     typedef enum {
@@ -138,7 +138,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 71 "cminusSintSem.y"
+#line 73 "cminusSintSem.y"
 
     int ival;
     char *id;

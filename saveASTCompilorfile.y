@@ -13,8 +13,6 @@
     int has_errors = 0;
 %}
 
-%expect 1
-
 %code requires {
     /* ===== TIPOS DE DADOS ===== */
     typedef enum {
@@ -50,6 +48,45 @@
     } Escopo;
 
     /* Funcoes da tabela de simbolos */
+    /* ===== AST ===== */
+    typedef enum {
+        NODE_PROGRAM,
+        NODE_VAR_DECL,
+        NODE_FUNC_DECL,
+        NODE_PARAM,
+        NODE_COMPOUND_STMT,
+        NODE_IF_STMT,
+        NODE_WHILE_STMT,
+        NODE_RETURN_STMT,
+        NODE_ASSIGN,
+        NODE_OP,
+        NODE_VAR,
+        NODE_ARRAY_ACCESS,
+        NODE_CALL,
+        NODE_NUM,
+        NODE_STMT_LIST,        // lista de statements
+        NODE_DECL_LIST,        // lista de declarações
+        NODE_PARAM_LIST,       // lista de parâmetros
+        NODE_ARG_LIST,         // lista de argumentos
+        NODE_EXPR_STMT         // expression statement
+    } NodeType;
+
+    typedef struct ASTNode {
+        NodeType tipo;
+        TipoVar tipodado; 
+        int lineno; // numero da linha
+        
+        union {
+            int num; // Valor
+            char *name; // Nome da variável
+            char *op; // Operação
+        } dado;
+        
+        struct ASTNode *filho[4];
+        struct ASTNode *irmao;
+    } ASTNode;
+
+    /* Funções da tabela de símbolos */
     void enter_scope();
     void leave_scope();
     Simbolo* lookup_symbol(const char *nome);
@@ -68,6 +105,62 @@
     extern Escopo *escopo_atual;
     extern Escopo *lista_escopos;
 
+    /* ===== PROTÓTIPOS AST - FUNÇÕES BÁSICAS ===== */
+    ASTNode* createNode(NodeType tipo);
+    ASTNode* createNumNode(int num);
+    ASTNode* createVarNode(char *name);
+    ASTNode* createOpNode(char *op, ASTNode *left, ASTNode *right);
+    
+    /* ===== DECLARAÇÕES ===== */
+    ASTNode* createVarDeclNode(TipoVar tipo, char *name, int is_array, int array_size);
+    ASTNode* createFuncDeclNode(TipoVar tipo, char *name, ASTNode *params, ASTNode *body);
+    ASTNode* createParamNode(TipoVar tipo, char *name, int is_array);
+    
+    /* ===== STATEMENTS ===== */
+    ASTNode* createAssignNode(ASTNode *var, ASTNode *expr);
+    ASTNode* createIfNode(ASTNode *cond, ASTNode *then_stmt, ASTNode *else_stmt);
+    ASTNode* createWhileNode(ASTNode *cond, ASTNode *body);
+    ASTNode* createReturnNode(ASTNode *expr);
+    ASTNode* createCompoundStmtNode(ASTNode *decls, ASTNode *stmts);
+    ASTNode* createExprStmtNode(ASTNode *expr);  // NOVO
+    
+    /* ===== EXPRESSÕES ===== */
+    ASTNode* createCallNode(char *func_name, ASTNode *args);
+    ASTNode* createArrayAccessNode(char *name, ASTNode *index);
+    
+    /* ===== LISTAS ===== */
+    ASTNode* createDeclListNode();     // NOVO
+    ASTNode* createStmtListNode();     // NOVO
+    ASTNode* createParamListNode();    // NOVO
+    ASTNode* createArgListNode();      // NOVO
+    
+    /* ===== MANIPULAÇÃO DA ÁRVORE ===== */
+    void addSibling(ASTNode *node, ASTNode *sibling);
+    void addChild(ASTNode *parent, ASTNode *child, int child_num);
+    
+    /* ===== IMPRESSÃO E VISUALIZAÇÃO ===== */
+    void printTree(ASTNode *root);
+    void printAST(ASTNode *node, int level);
+    int getHeight(ASTNode *root);
+    void fillBuffer(ASTNode *node, int level, int left, int right);
+    const char* nodeTypeToString(NodeType tipo);  // NOVO: helper para impressão
+    
+    /* ===== LIBERAÇÃO DE MEMÓRIA ===== */
+    void freeAST(ASTNode *node);
+    
+    /* ===== ANÁLISE/PERCURSO ===== */
+    void traverseAST(ASTNode *node);
+    void typeCheckAST(ASTNode *node);
+
+    /* Variáveis globais para o "Canvas" de impressão */
+    #define MAX_LINES 20
+    #define MAX_WIDTH 80
+    char canvas[MAX_LINES][MAX_WIDTH];
+}
+
+/* ===== ADICIONE VARIÁVEL GLOBAL PARA A AST ===== */
+%code {
+    ASTNode *ast_root = NULL;  /* Raiz da AST */
 }
 
 %union {
@@ -78,6 +171,7 @@
         TipoVar tipo;
         int is_array;
     } var_info;
+    ASTNode *node;
 }
 
 /* ===== TOKENS ===== */
@@ -99,6 +193,15 @@
 %type<tipo> type_specifier expression simple_expression
 %type<tipo> additive_expression term factor
 %type<var_info> var
+
+/* ===== TIPOS NÃO-TERMINAIS AST ===== */
+%type<node> program declaration_list declaration
+%type<node> var_declaration fun_declaration
+%type<node> params param_list param
+%type<node> compound_stmt local_declarations statement_list
+%type<node> statement expression_stmt selection_stmt
+%type<node> iteration_stmt return_stmt
+%type<node> call args arg_list
 
 %start program
 
@@ -318,15 +421,8 @@ var :
             $$.tipo = TYPE_ERROR;
             $$.is_array = 0;
         } else {
-            if (s->kind == KIND_ARRAY) {
-                /* Permitir array sem índice quando usado como argumento de função */
-                /* Arrays (tanto parâmetros quanto globais/locais) podem ser passados para funções */
-                $$.tipo = TYPE_INT_ARRAY;
-                $$.is_array = 1;
-            } else {
-                $$.tipo = s->tipo;
-                $$.is_array = 0;
-            }
+            $$.tipo = s->tipo;
+            $$.is_array = (s->kind == KIND_ARRAY);
         }
         free($1);
     }
@@ -395,8 +491,9 @@ factor :
     | var 
     { 
         if ($1.is_array) {
-            /* Arrays como parâmetros podem ser usados como argumentos */
-            $$ = TYPE_INT_ARRAY;
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: uso de array sem indexacao\n", yylineno);
+            has_errors = 1;
+            $$ = TYPE_ERROR;
         } else {
             $$ = $1.tipo; 
         }
@@ -669,6 +766,217 @@ void free_all_scopes() {
     }
     lista_escopos = NULL;
     escopo_atual = NULL;
+}
+
+/* ===== IMPLEMENTAÇÃO DAS FUNÇÕES DA AST ===== */
+
+ASTNode* createNode(NodeType tipo) {
+    ASTNode *node = (ASTNode*) malloc(sizeof(ASTNode));
+    node->tipo = tipo;
+    node->tipodado = TYPE_ERROR;
+    node->lineno = yylineno;
+    node->dado.name = NULL;
+    for (int i = 0; i < 4; i++) {
+        node->filho[i] = NULL;
+    }
+    node->irmao = NULL;
+    return node;
+}
+
+ASTNode* createNumNode(int num) {
+    ASTNode *node = createNode(NODE_NUM);
+    node->dado.num = num;
+    node->tipodado = TYPE_INT;
+    return node;
+}
+
+ASTNode* createVarNode(char *name) {
+    ASTNode *node = createNode(NODE_VAR);
+    node->dado.name = strdup(name);
+    return node;
+}
+
+ASTNode* createOpNode(char *op, ASTNode *left, ASTNode *right) {
+    ASTNode *node = createNode(NODE_OP);
+    node->dado.op = strdup(op);
+    node->filho[0] = left;
+    node->filho[1] = right;
+    return node;
+}
+
+ASTNode* createAssignNode(ASTNode *var, ASTNode *expr) {
+    ASTNode *node = createNode(NODE_ASSIGN);
+    node->filho[0] = var;
+    node->filho[1] = expr;
+    return node;
+}
+
+ASTNode* createIfNode(ASTNode *cond, ASTNode *then_stmt, ASTNode *else_stmt) {
+    ASTNode *node = createNode(NODE_IF_STMT);
+    node->filho[0] = cond;
+    node->filho[1] = then_stmt;
+    node->filho[2] = else_stmt;
+    return node;
+}
+
+ASTNode* createWhileNode(ASTNode *cond, ASTNode *body) {
+    ASTNode *node = createNode(NODE_WHILE_STMT);
+    node->filho[0] = cond;
+    node->filho[1] = body;
+    return node;
+}
+
+ASTNode* createReturnNode(ASTNode *expr) {
+    ASTNode *node = createNode(NODE_RETURN_STMT);
+    node->filho[0] = expr;
+    return node;
+}
+
+ASTNode* createCallNode(char *func_name, ASTNode *args) {
+    ASTNode *node = createNode(NODE_CALL);
+    node->dado.name = strdup(func_name);
+    node->filho[0] = args;
+    return node;
+}
+
+ASTNode* createArrayAccessNode(char *name, ASTNode *index) {
+    ASTNode *node = createNode(NODE_ARRAY_ACCESS);
+    node->dado.name = strdup(name);
+    node->filho[0] = index;
+    return node;
+}
+
+ASTNode* createVarDeclNode(TipoVar tipo, char *name, int is_array, int array_size) {
+    ASTNode *node = createNode(NODE_VAR_DECL);
+    node->tipodado = tipo;
+    node->dado.name = strdup(name);
+    if (is_array) {
+        ASTNode *size_node = createNumNode(array_size);
+        node->filho[0] = size_node;
+    }
+    return node;
+}
+
+ASTNode* createFuncDeclNode(TipoVar tipo, char *name, ASTNode *params, ASTNode *body) {
+    ASTNode *node = createNode(NODE_FUNC_DECL);
+    node->tipodado = tipo;
+    node->dado.name = strdup(name);
+    node->filho[0] = params;
+    node->filho[1] = body;
+    return node;
+}
+
+ASTNode* createParamNode(TipoVar tipo, char *name, int is_array) {
+    ASTNode *node = createNode(NODE_PARAM);
+    node->tipodado = is_array ? TYPE_INT_ARRAY : tipo;
+    node->dado.name = strdup(name);
+    return node;
+}
+
+ASTNode* createCompoundStmtNode(ASTNode *decls, ASTNode *stmts) {
+    ASTNode *node = createNode(NODE_COMPOUND_STMT);
+    node->filho[0] = decls;
+    node->filho[1] = stmts;
+    return node;
+}
+
+ASTNode* createExprStmtNode(ASTNode *expr) {
+    ASTNode *node = createNode(NODE_EXPR_STMT);
+    node->filho[0] = expr;
+    return node;
+}
+
+ASTNode* createDeclListNode() {
+    return createNode(NODE_DECL_LIST);
+}
+
+ASTNode* createStmtListNode() {
+    return createNode(NODE_STMT_LIST);
+}
+
+ASTNode* createParamListNode() {
+    return createNode(NODE_PARAM_LIST);
+}
+
+ASTNode* createArgListNode() {
+    return createNode(NODE_ARG_LIST);
+}
+
+void addSibling(ASTNode *node, ASTNode *sibling) {
+    if (node == NULL) return;
+    while (node->irmao != NULL) {
+        node = node->irmao;
+    }
+    node->irmao = sibling;
+}
+
+const char* nodeTypeToString(NodeType tipo) {
+    switch(tipo) {
+        case NODE_PROGRAM: return "PROGRAM";
+        case NODE_VAR_DECL: return "VAR_DECL";
+        case NODE_FUNC_DECL: return "FUNC_DECL";
+        case NODE_PARAM: return "PARAM";
+        case NODE_COMPOUND_STMT: return "COMPOUND";
+        case NODE_IF_STMT: return "IF";
+        case NODE_WHILE_STMT: return "WHILE";
+        case NODE_RETURN_STMT: return "RETURN";
+        case NODE_ASSIGN: return "ASSIGN";
+        case NODE_OP: return "OP";
+        case NODE_VAR: return "VAR";
+        case NODE_ARRAY_ACCESS: return "ARRAY_ACCESS";
+        case NODE_CALL: return "CALL";
+        case NODE_NUM: return "NUM";
+        case NODE_STMT_LIST: return "STMT_LIST";
+        case NODE_DECL_LIST: return "DECL_LIST";
+        case NODE_PARAM_LIST: return "PARAM_LIST";
+        case NODE_ARG_LIST: return "ARG_LIST";
+        case NODE_EXPR_STMT: return "EXPR_STMT";
+        default: return "ERRO";
+    }
+}
+
+void printAST(ASTNode *node, int level) {
+    if (node == NULL) return;
+    
+    for (int i = 0; i < level; i++) printf("  ");
+    
+    printf("%s", nodeTypeToString(node->tipo));
+    
+    if (node->tipo == NODE_NUM) {
+        printf(" [%d]", node->dado.num);
+    } else if (node->dado.name != NULL) {
+        printf(" [%s]", node->dado.name);
+    } else if (node->tipo == NODE_OP && node->dado.op != NULL) {
+        printf(" [%s]", node->dado.op);
+    }
+    
+    printf("\n");
+    
+    for (int i = 0; i < 4; i++) {
+        if (node->filho[i] != NULL) {
+            printAST(node->filho[i], level + 1);
+        }
+    }
+    
+    if (node->irmao != NULL) {
+        printAST(node->irmao, level);
+    }
+}
+
+void freeAST(ASTNode *node) {
+    if (node == NULL) return;
+    
+    for (int i = 0; i < 4; i++) {
+        freeAST(node->filho[i]);
+    }
+    
+    freeAST(node->irmao);
+    
+    if (node->dado.name != NULL) {
+        free(node->dado.name);
+    }
+    
+    free(node);
 }
 
 int main(int argc, char **argv) {
