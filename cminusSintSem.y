@@ -33,18 +33,21 @@
         TipoVar tipo;
         TipoSimbolo kind;
         int tamanho;        /* para arrays */
-        int num_params;     /* para funções */
-        TipoVar *param_types; /* tipos dos parâmetros */
+        int num_params;     /* para funcoes (mantido por compatibilidade) */
+        TipoVar *param_types; /* tipos dos parametros */
         int linha;
+        int is_param;           /* 1 se este simbolo é um parâmetro */
+        struct Escopo *def_scope; /* escopo associado (para funções: o escopo do corpo) */
         struct Simbolo *prox;
     } Simbolo;
 
     typedef struct Escopo {
         Simbolo *simbolos;
         struct Escopo *pai;
+        struct Escopo *next_all; /* link para lista de todos os escopos */
     } Escopo;
 
-    /* Funções da tabela de símbolos */
+    /* Funcoes da tabela de simbolos */
     void enter_scope();
     void leave_scope();
     Simbolo* lookup_symbol(const char *nome);
@@ -56,6 +59,13 @@
     TipoVar check_expression_type(const char *op, TipoVar t1, TipoVar t2, int linha);
     void check_return_type(TipoVar tipo_func, TipoVar tipo_exp, int linha);
     void check_function_call(const char *nome, int num_args, int linha);
+
+    /* libera todos os escopos no final */
+    void free_all_scopes();
+
+    extern Escopo *escopo_atual;
+    extern Escopo *lista_escopos;
+
 }
 
 %union {
@@ -84,10 +94,9 @@
 %left LT LE GT GE EQ NE
 
 /* ===== TIPOS NÃO-TERMINAIS ===== */
-%type<tipo> type_specifier expression simple_expression 
+%type<tipo> type_specifier expression simple_expression
 %type<tipo> additive_expression term factor
 %type<var_info> var
-%type<ival> relop addop mulop
 
 %start program
 
@@ -97,9 +106,9 @@
 program : 
     declaration_list 
     { 
-        printf("Análise sintática concluída com sucesso!\n"); 
+        printf("Analise sintatica concluida com sucesso!\n"); 
         if (!has_errors) {
-            printf("Análise semântica: Nenhum erro encontrado.\n");
+            printf("Analise semantica: Nenhum erro encontrado.\n");
         }
     }
     ;
@@ -126,7 +135,7 @@ var_declaration :
     | type_specifier ID LBRACK NUM RBRACK SEMI
     {
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "Erro semântico linha %d: array '%s' não pode ser void\n", 
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: array '%s' nao pode ser void\n", 
                     yylineno, $2);
             has_errors = 1;
         } else {
@@ -147,7 +156,12 @@ fun_declaration :
     type_specifier ID 
     {
         insert_function($2, $1, yylineno);
+        /* pega o símbolo da função no escopo atual (onde foi inserida) */
+        Simbolo *func_sym = lookup_symbol_current($2);
         enter_scope();
+        if (func_sym) {
+            func_sym->def_scope = escopo_atual; /* associa escopo da função */
+        }
     }
     LPAREN params RPAREN compound_stmt
     {
@@ -174,22 +188,26 @@ param :
     type_specifier ID
     {
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "Erro semântico linha %d: parâmetro '%s' não pode ser void\n",
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro '%s' nao pode ser void\n",
                     yylineno, $2);
             has_errors = 1;
         } else {
             insert_symbol($2, $1, KIND_VAR, yylineno);
+            Simbolo *p = lookup_symbol_current($2);
+            if (p) p->is_param = 1;
         }
         free($2);
     }
     | type_specifier ID LBRACK RBRACK
     {
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "Erro semântico linha %d: parâmetro array '%s' não pode ser void\n",
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro array '%s' nao pode ser void\n",
                     yylineno, $2);
             has_errors = 1;
         } else {
             insert_symbol($2, TYPE_INT_ARRAY, KIND_ARRAY, yylineno);
+            Simbolo *p = lookup_symbol_current($2);
+            if (p) p->is_param = 1;
         }
         free($2);
     }
@@ -238,14 +256,14 @@ selection_stmt :
     IF LPAREN expression RPAREN statement
     {
         if ($3 != TYPE_INT) {
-            fprintf(stderr, "Erro semântico linha %d: condição do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
             has_errors = 1;
         }
     }
     | IF LPAREN expression RPAREN statement ELSE statement
     {
         if ($3 != TYPE_INT) {
-            fprintf(stderr, "Erro semântico linha %d: condição do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
             has_errors = 1;
         }
     }
@@ -256,7 +274,7 @@ iteration_stmt :
     WHILE LPAREN expression RPAREN statement
     {
         if ($3 != TYPE_INT) {
-            fprintf(stderr, "Erro semântico linha %d: condição do WHILE deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do WHILE deve ser inteira\n", yylineno);
             has_errors = 1;
         }
     }
@@ -273,11 +291,11 @@ expression :
     var ASSIGN expression
     {
         if ($1.is_array) {
-            fprintf(stderr, "Erro semântico linha %d: não é possível atribuir a array completo\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: nao e possivel atribuir a array completo\n", yylineno);
             has_errors = 1;
             $$ = TYPE_ERROR;
         } else if ($1.tipo != $3 && $3 != TYPE_ERROR) {
-            fprintf(stderr, "Erro semântico linha %d: tipos incompatíveis na atribuição\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: tipos incompativeis na atribuicao\n", yylineno);
             has_errors = 1;
             $$ = TYPE_ERROR;
         } else {
@@ -293,7 +311,7 @@ var :
     {
         Simbolo *s = lookup_symbol($1);
         if (!s) {
-            fprintf(stderr, "Erro semântico linha %d: variável '%s' não declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
             has_errors = 1;
             $$.tipo = TYPE_ERROR;
             $$.is_array = 0;
@@ -307,15 +325,15 @@ var :
     {
         Simbolo *s = lookup_symbol($1);
         if (!s) {
-            fprintf(stderr, "Erro semântico linha %d: variável '%s' não declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
             has_errors = 1;
             $$.tipo = TYPE_ERROR;
         } else if (s->kind != KIND_ARRAY) {
-            fprintf(stderr, "Erro semântico linha %d: '%s' não é um array\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e um array\n", yylineno, $1);
             has_errors = 1;
             $$.tipo = TYPE_ERROR;
         } else if ($3 != TYPE_INT) {
-            fprintf(stderr, "Erro semântico linha %d: índice de array deve ser inteiro\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: indice de array deve ser inteiro\n", yylineno);
             has_errors = 1;
             $$.tipo = TYPE_ERROR;
         } else {
@@ -368,14 +386,14 @@ factor :
     | var 
     { 
         if ($1.is_array) {
-            fprintf(stderr, "Erro semântico linha %d: uso de array sem indexação\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: uso de array sem indexacao\n", yylineno);
             has_errors = 1;
             $$ = TYPE_ERROR;
         } else {
             $$ = $1.tipo; 
         }
     }
-    | call { $$ = TYPE_INT; } /* simplificação: assume que funções retornam int */
+    | call { $$ = TYPE_INT; } /* simplificacao: assume que funcoes retornam int */
     | NUM { $$ = TYPE_INT; }
     ;
 
@@ -385,10 +403,10 @@ call :
     {
         Simbolo *s = lookup_symbol($1);
         if (!s) {
-            fprintf(stderr, "Erro semântico linha %d: função '%s' não declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: funcao '%s' nao declarada\n", yylineno, $1);
             has_errors = 1;
         } else if (s->kind != KIND_FUNC) {
-            fprintf(stderr, "Erro semântico linha %d: '%s' não é uma função\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e uma funcao\n", yylineno, $1);
             has_errors = 1;
         }
         free($1);
@@ -412,29 +430,20 @@ arg_list :
 /* ===== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ===== */
 
 Escopo *escopo_atual = NULL;
+Escopo *lista_escopos = NULL;
 
 void enter_scope() {
     Escopo *novo = (Escopo*) malloc(sizeof(Escopo));
     novo->simbolos = NULL;
     novo->pai = escopo_atual;
+    novo->next_all = lista_escopos;
+    lista_escopos = novo;
     escopo_atual = novo;
 }
 
 void leave_scope() {
     if (!escopo_atual) return;
-    
-    Simbolo *s = escopo_atual->simbolos;
-    while (s) {
-        Simbolo *tmp = s;
-        s = s->prox;
-        free(tmp->nome);
-        if (tmp->param_types) free(tmp->param_types);
-        free(tmp);
-    }
-    
-    Escopo *tmp = escopo_atual;
     escopo_atual = escopo_atual->pai;
-    free(tmp);
 }
 
 Simbolo* lookup_symbol_current(const char *nome) {
@@ -467,7 +476,7 @@ void insert_symbol(const char *nome, TipoVar tipo, TipoSimbolo kind, int linha) 
     }
     
     if (lookup_symbol_current(nome)) {
-        fprintf(stderr, "Erro semântico linha %d: '%s' já declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
         has_errors = 1;
         return;
     }
@@ -481,6 +490,8 @@ void insert_symbol(const char *nome, TipoVar tipo, TipoSimbolo kind, int linha) 
     s->param_types = NULL;
     s->linha = linha;
     s->prox = escopo_atual->simbolos;
+    s->is_param = 0;
+    s->def_scope = NULL;
     escopo_atual->simbolos = s;
 }
 
@@ -488,7 +499,7 @@ void insert_array(const char *nome, int tamanho, int linha) {
     if (!escopo_atual) return;
     
     if (lookup_symbol_current(nome)) {
-        fprintf(stderr, "Erro semântico linha %d: '%s' já declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
         has_errors = 1;
         return;
     }
@@ -509,7 +520,7 @@ void insert_function(const char *nome, TipoVar tipo_retorno, int linha) {
     if (!escopo_atual) return;
     
     if (lookup_symbol_current(nome)) {
-        fprintf(stderr, "Erro semântico linha %d: '%s' já declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
         has_errors = 1;
         return;
     }
@@ -532,13 +543,13 @@ TipoVar check_expression_type(const char *op, TipoVar t1, TipoVar t2, int linha)
     }
     
     if (t1 == TYPE_VOID || t2 == TYPE_VOID) {
-        fprintf(stderr, "Erro semântico linha %d: operação %s com tipo void\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s com tipo void\n", linha, op);
         has_errors = 1;
         return TYPE_ERROR;
     }
     
     if (t1 != TYPE_INT || t2 != TYPE_INT) {
-        fprintf(stderr, "Erro semântico linha %d: operação %s requer operandos inteiros\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s requer operandos inteiros\n", linha, op);
         has_errors = 1;
         return TYPE_ERROR;
     }
@@ -546,11 +557,117 @@ TipoVar check_expression_type(const char *op, TipoVar t1, TipoVar t2, int linha)
     return TYPE_INT;
 }
 
+void ExibirTabelaSimbolos() {
+    printf("\n");
+    printf("--------------------------------------------------------------------------------------\n");
+    printf("|                      TABELA DE SIMBOLOS DO COMPILADOR C-MINUS                      |\n");
+    printf("--------------------------------------------------------------------------------------\n");
+    
+    printf("\n%-20s | %-10s | %-8s | %-10s | %-8s | %-6s | %s\n", 
+           "NOME", "TIPO", "CATEGORIA", "ESCOPO", "TAMANHO", "PARAMS", "LINHA");
+    printf("%-20s-%-10s-%-8s-%-10s-%-8s-%-6s---------\n",
+           "--------------------", "----------", "--------", "----------", "--------", "------");
+    
+    /* Conta e armazena ponteiros para todos os escopos */
+    int count = 0;
+    Escopo *e = lista_escopos;
+    while (e) { count++; e = e->next_all; }
+    if (count == 0) {
+        printf("\n");
+        return;
+    }
+    
+    Escopo **arr = (Escopo**) malloc(count * sizeof(Escopo*));
+    int i = 0;
+    e = lista_escopos;
+    while (e) { arr[i++] = e; e = e->next_all; }
+
+    /* printf("%-6d | ", computed_params); */
+    
+    /* Imprime do escopo mais antigo (global) para o mais interno,
+       atribuindo escopo_num começando em 0 */
+    int escopo_num = 0;
+    for (int idx = count - 1; idx >= 0; idx--) {
+        Simbolo *s = arr[idx]->simbolos;
+        while (s) {
+            printf("%-20s | ", s->nome);
+            
+            /* Tipo */
+            switch (s->tipo) {
+                case TYPE_INT:        printf("%-10s | ", "int"); break;
+                case TYPE_VOID:       printf("%-10s | ", "void"); break;
+                case TYPE_INT_ARRAY:  printf("%-10s | ", "int[]"); break;
+                case TYPE_ERROR:      printf("%-10s | ", "ERROR"); break;
+            }
+            
+            /* Tipo de Símbolo */
+            switch (s->kind) {
+                case KIND_VAR:   printf("%-8s | ", "VAR"); break;
+                case KIND_ARRAY: printf("%-8s | ", "ARRAY"); break;
+                case KIND_FUNC:  printf("%-8s | ", "FUNC"); break;
+            }
+            
+            /* Escopo */
+            printf("%-10d | ", escopo_num);
+            
+            /* Tamanho ou Params */
+            if (s->kind == KIND_ARRAY) {
+                printf("%-8d | ", s->tamanho);
+            } else if (s->kind == KIND_FUNC) {
+                printf("%-8s | ", "-");
+            } else {
+                printf("%-8s | ", "-");
+            }
+            
+            /* Número de parâmetros */
+            if (s->kind == KIND_FUNC) {
+                int computed_params = 0;
+                if (s->def_scope) {
+                    Simbolo *ps = s->def_scope->simbolos;
+                    while (ps) {
+                        if (ps->is_param) computed_params++;
+                        ps = ps->prox;
+                    }
+                }
+                printf("%-6d | ", computed_params);
+            } else {
+                printf("%-6s | ", "-");
+            }
+            
+            printf("%d\n", s->linha);
+            s = s->prox;
+        }
+        escopo_num++;
+    }
+    
+    free(arr);
+    printf("\n");
+}
+
+void free_all_scopes() {
+    Escopo *e = lista_escopos;
+    while (e) {
+        Simbolo *s = e->simbolos;
+        while (s) {
+            Simbolo *tmp = s;
+            s = s->prox;
+            free(tmp->nome);
+            if (tmp->param_types) free(tmp->param_types);
+            free(tmp);
+        }
+        Escopo *tmp_e = e;
+        e = e->next_all;
+        free(tmp_e);
+    }
+    lista_escopos = NULL;
+    escopo_atual = NULL;
+}
+
 int main(int argc, char **argv) {
     if (argc > 1) {
         yyin = fopen(argv[1], "r");
         if (!yyin) {
-            fprintf(stderr, "Erro: não foi possível abrir arquivo '%s'\n", argv[1]);
+            fprintf(stderr, "Erro: nao foi possivel abrir arquivo '%s'\n", argv[1]);
             return 1;
         }
     } else {
@@ -562,8 +679,10 @@ int main(int argc, char **argv) {
     
     yyparse();
     
-    /* Remove escopo global */
-    leave_scope();
+    ExibirTabelaSimbolos();
+
+    /* Libera todos os escopos e simbolos */
+    free_all_scopes();
     
     if (yyin != stdin) fclose(yyin);
     
@@ -571,6 +690,6 @@ int main(int argc, char **argv) {
 }
 
 void yyerror(const char *s) {
-    fprintf(stderr, "Erro sintático linha %d: %s\n", yylineno, s);
+    fprintf(stderr, "Erro sintatico linha %d: %s\n", yylineno, s);
     has_errors = 1;
 }
