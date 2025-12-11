@@ -2,20 +2,23 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include <string.h>
+    #include "parser_context.h"
 
     extern int yylex(void);
-    extern int yyparse(void);
+    /* extern int yyparse(void); */
     extern FILE *yyin;
     extern int yylineno;
 
-    void yyerror(const char *s);
-    
-    int has_errors = 0;
+    void yyerror(ParserContext *ctx, const char *s);
 %}
 
 %expect 1
 
+%parse-param {ParserContext *ctx}
+
 %code requires {
+    #include "parser_context.h"
+
     /* ===== TIPOS DE DADOS ===== */
     typedef enum {
         TYPE_INT,
@@ -50,23 +53,20 @@
     } Escopo;
 
     /* Funcoes da tabela de simbolos */
-    void enter_scope();
-    void leave_scope();
-    Simbolo* lookup_symbol(const char *nome);
-    Simbolo* lookup_symbol_current(const char *nome);
-    void insert_symbol(const char *nome, TipoVar tipo, TipoSimbolo kind, int linha);
-    void insert_array(const char *nome, int tamanho, int linha);
-    void insert_function(const char *nome, TipoVar tipo_retorno, int linha);
-    void add_param_to_function(const char *func_nome, TipoVar tipo_param);
-    TipoVar check_expression_type(const char *op, TipoVar t1, TipoVar t2, int linha);
-    void check_return_type(TipoVar tipo_func, TipoVar tipo_exp, int linha);
-    void check_function_call(const char *nome, int num_args, int linha);
+    void enter_scope_ctx(ParserContext *ctx);
+    void leave_scope_ctx(ParserContext *ctx);
+    Simbolo* lookup_symbol_ctx(ParserContext *ctx, const char *nome);
+    Simbolo* lookup_symbol_current_ctx(ParserContext *ctx, const char *nome);
+    void insert_symbol_ctx(ParserContext *ctx, const char *nome, TipoVar tipo, TipoSimbolo kind, int linha);
+    void insert_array_ctx(ParserContext *ctx, const char *nome, int tamanho, int linha);
+    void insert_function_ctx(ParserContext *ctx, const char *nome, TipoVar tipo_retorno, int linha);
+    /* void add_param_to_function(const char *func_nome, TipoVar tipo_param); */
+    TipoVar check_expression_type_ctx(ParserContext *ctx, const char *op, TipoVar t1, TipoVar t2, int linha);
+    /* void check_return_type(TipoVar tipo_func, TipoVar tipo_exp, int linha); */
+    /* void check_function_call(const char *nome, int num_args, int linha); */
 
     /* libera todos os escopos no final */
-    void free_all_scopes();
-
-    extern Escopo *escopo_atual;
-    extern Escopo *lista_escopos;
+    void free_all_scopes_ctx(ParserContext *ctx);
 
     /* ===== ESTRUTURA DA AST ===== */
     typedef enum {STMTK, EXPK, VARK} NodeKind;
@@ -154,18 +154,12 @@ program :
     declaration_list 
     { 
         $$ = $1;
+        ctx->ast_root = $$;
         printf("Analise sintatica concluida com sucesso!\n"); 
-        if (!has_errors) {
+        if (!ctx->has_errors) {
             printf("Analise semantica: Nenhum erro encontrado.\n");
-            
-            /* Imprime a AST */
-            printf("\n");
-            printf("================================================================================\n");
-            printf("                      ARVORE SINTATICA ABSTRATA (AST)\n");
-            printf("================================================================================\n");
-            printTree($$, 0);
-            printf("================================================================================\n");
         }
+        /* Impressão da AST movida para a main */
     }
     ;
 
@@ -197,7 +191,7 @@ var_declaration :
     type_specifier ID SEMI
     {
         /* Análise semântica */
-        insert_symbol($2, $1, KIND_VAR, yylineno);
+        insert_symbol_ctx(ctx, $2, $1, KIND_VAR, yylineno);
         
         /* Construção da AST - padrão correto */
         $$ = newStmtNode($1 == TYPE_INT ? INTEGERK : VOIDK);
@@ -219,9 +213,9 @@ var_declaration :
         if ($1 == TYPE_VOID) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: array '%s' nao pode ser void\n", 
                     yylineno, $2);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
-            insert_array($2, $4, yylineno);
+            insert_array_ctx(ctx, $2, $4, yylineno);
         }
         
         /* Construção da AST - padrão correto */
@@ -261,16 +255,16 @@ fun_declaration :
     type_specifier ID 
     {
         /* Análise semântica */
-        insert_function($2, $1, yylineno);
-        Simbolo *func_sym = lookup_symbol_current($2);
-        enter_scope();
+        insert_function_ctx(ctx, $2, $1, yylineno);
+        Simbolo *func_sym = lookup_symbol_current_ctx(ctx, $2);
+        enter_scope_ctx(ctx);
         if (func_sym) {
-            func_sym->def_scope = escopo_atual;
+            func_sym->def_scope = ctx->escopo_atual;
         }
     }
     LPAREN params RPAREN compound_stmt
     {
-        leave_scope();
+        leave_scope_ctx(ctx);
         
         /* Construção da AST - padrão correto */
         $$ = newStmtNode($1 == TYPE_INT ? INTEGERK : VOIDK);
@@ -324,10 +318,10 @@ param :
         if ($1 == TYPE_VOID) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro '%s' nao pode ser void\n",
                     yylineno, $2);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
-            insert_symbol($2, $1, KIND_VAR, yylineno);
-            Simbolo *p = lookup_symbol_current($2);
+            insert_symbol_ctx(ctx, $2, $1, KIND_VAR, yylineno);
+            Simbolo *p = lookup_symbol_current_ctx(ctx, $2);
             if (p) p->is_param = 1;
         }
         
@@ -350,10 +344,10 @@ param :
         if ($1 == TYPE_VOID) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro array '%s' nao pode ser void\n",
                     yylineno, $2);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
-            insert_symbol($2, TYPE_INT_ARRAY, KIND_ARRAY, yylineno);
-            Simbolo *p = lookup_symbol_current($2);
+            insert_symbol_ctx(ctx, $2, TYPE_INT_ARRAY, KIND_ARRAY, yylineno);
+            Simbolo *p = lookup_symbol_current_ctx(ctx, $2);
             if (p) p->is_param = 1;
         }
         
@@ -426,10 +420,10 @@ statement :
     ;
 
 compound_stmt_with_scope :
-    { enter_scope(); } 
+    { enter_scope_ctx(ctx); } 
     compound_stmt 
     { 
-        leave_scope();
+        leave_scope_ctx(ctx);
         $$ = $2;
     }
     ;
@@ -447,7 +441,7 @@ selection_stmt :
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         }
         
         /* Construção da AST */
@@ -462,7 +456,7 @@ selection_stmt :
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         }
         
         /* Construção da AST */
@@ -481,7 +475,7 @@ iteration_stmt :
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do WHILE deve ser inteira\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         }
         
         /* Construção da AST */
@@ -519,10 +513,10 @@ expression :
         if ($1 && $1->nodekind == VARK && $1->kind.var.varKind == KIND_ARRAY && 
             $1->child[0] == NULL) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: nao e possivel atribuir a array completo\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else if (var_type != exp_type && exp_type != TYPE_ERROR && var_type != TYPE_ERROR) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: tipos incompativeis na atribuicao\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         }
         
         /* Construção da AST */
@@ -539,13 +533,13 @@ expression :
 var :
     ID
     {
-        Simbolo *s = lookup_symbol($1);
+        Simbolo *s = lookup_symbol_ctx(ctx, $1);
         TipoVar tipo = TYPE_ERROR;
         TipoSimbolo kind = KIND_VAR;
         
         if (!s) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
             tipo = s->tipo;
             kind = s->kind;
@@ -567,18 +561,18 @@ var :
     }
     | ID LBRACK expression RBRACK
     {
-        Simbolo *s = lookup_symbol($1);
+        Simbolo *s = lookup_symbol_ctx(ctx, $1);
         TipoVar tipo = TYPE_ERROR;
         
         if (!s) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else if (s->kind != KIND_ARRAY) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e um array\n", yylineno, $1);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else if ($3 && $3->type != TYPE_INT) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: indice de array deve ser inteiro\n", yylineno);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
             tipo = TYPE_INT;
         }
@@ -602,7 +596,7 @@ simple_expression :
         /* Análise semântica */
         TipoVar t1 = $1 ? $1->type : TYPE_ERROR;
         TipoVar t2 = $3 ? $3->type : TYPE_ERROR;
-        TipoVar result = check_expression_type("relacional", t1, t2, yylineno);
+        TipoVar result = check_expression_type_ctx(ctx, "relacional", t1, t2, yylineno);
         
         /* Construção da AST */
         $$ = newExpNode(OPK);
@@ -631,7 +625,7 @@ additive_expression :
         /* Análise semântica */
         TipoVar t1 = $1 ? $1->type : TYPE_ERROR;
         TipoVar t2 = $3 ? $3->type : TYPE_ERROR;
-        TipoVar result = check_expression_type("aditivo", t1, t2, yylineno);
+        TipoVar result = check_expression_type_ctx(ctx, "aditivo", t1, t2, yylineno);
         
         /* Construção da AST */
         $$ = newExpNode(OPK);
@@ -656,7 +650,7 @@ term :
         /* Análise semântica */
         TipoVar t1 = $1 ? $1->type : TYPE_ERROR;
         TipoVar t2 = $3 ? $3->type : TYPE_ERROR;
-        TipoVar result = check_expression_type("multiplicativo", t1, t2, yylineno);
+        TipoVar result = check_expression_type_ctx(ctx, "multiplicativo", t1, t2, yylineno);
         
         /* Construção da AST */
         $$ = newExpNode(OPK);
@@ -692,15 +686,15 @@ factor :
 call :
     ID LPAREN args RPAREN
     {
-        Simbolo *s = lookup_symbol($1);
+        Simbolo *s = lookup_symbol_ctx(ctx, $1);
         TipoVar tipo = TYPE_INT;  /* padrão */
         
         if (!s) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: funcao '%s' nao declarada\n", yylineno, $1);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else if (s->kind != KIND_FUNC) {
             fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e uma funcao\n", yylineno, $1);
-            has_errors = 1;
+            ctx->has_errors = 1;
         } else {
             tipo = s->tipo;  /* tipo de retorno da função */
         }
@@ -740,28 +734,261 @@ arg_list :
 
 %%
 
+/* ===== FUNÇÕES PARA GRAPHVIZ ===== */
+
+/* Estrutura par contexto de impressão DOT */
+typedef struct {
+    int node_counter;
+    FILE *fp;
+} DotContext;
+
+/* Função auxiliar para escapar strings */
+static char *escape_label(const char *str) {
+    if (!str) return strdup("");
+
+    int len = strlen(str);
+    char *escaped = (char *)malloc(len * 2 + 1);
+    
+    int j = 0;
+
+    for (int i = 0; i < len; i++) {
+        if (str[i] == '"' || str[i] == '\\') {
+            escaped[j++] = '\\';
+        }
+
+        escaped[j++] = str[i];
+    }
+
+    escaped[j] = '\0';
+
+    return escaped;
+}
+
+/* Função para obter nome do tipo */
+static const char* get_type_name(TipoVar type) {
+    switch (type) {
+        case TYPE_INT: return "int";
+        case TYPE_VOID: return "void";
+        case TYPE_INT_ARRAY: return "int[]";
+        case TYPE_ERROR: return "ERROR";
+        default: return "unknown";
+    }
+}
+
+/* Função para obter símbolo do operador */
+static const char* get_op_symbol(int op) {
+    switch (op) {
+        case PLUS: return "+";
+        case MINUS: return "-";
+        case TIMES: return "*";
+        case DIVIDE: return "/";
+        case LT: return "<";
+        case LE: return "<=";
+        case GT: return ">";
+        case GE: return ">=";
+        case EQ: return "==";
+        case NE: return "!=";
+        default: return "?";
+    }
+}
+
+/* Função recursiva para gerar GraphViz DOT */
+static int printTreeDOT_recursive(DotContext *ctx, TreeNode *tree, int parent_id) {
+    if (tree == NULL) return -1;
+    
+    int current_id = ctx->node_counter++;
+    FILE *fp = ctx->fp;
+    
+    /* Define cor e forma do nó */
+    const char *shape = "box";
+    const char *color = "lightblue";
+    char label[256] = "";
+    
+    if (tree->nodekind == STMTK) {
+        color = "lightgreen";
+        switch (tree->kind.stmt) {
+            case INTEGERK:
+                if (tree->child[0] && tree->child[0]->nodekind == VARK) {
+                    if (tree->child[0]->kind.var.varKind == KIND_FUNC) {
+                        snprintf(label, sizeof(label), "Function\\n[int]");
+                        color = "gold";
+                    } else if (tree->child[0]->kind.var.varKind == KIND_ARRAY) {
+                        snprintf(label, sizeof(label), "Array Decl\\n[int]");
+                    } else {
+                        snprintf(label, sizeof(label), "Var Decl\\n[int]");
+                    }
+                } else {
+                    snprintf(label, sizeof(label), "Type: int");
+                }
+                break;
+            case VOIDK:
+                if (tree->child[0] && tree->child[0]->nodekind == VARK && 
+                    tree->child[0]->kind.var.varKind == KIND_FUNC) {
+                    snprintf(label, sizeof(label), "Function\\n[void]");
+                    color = "gold";
+                } else {
+                    snprintf(label, sizeof(label), "Type: void");
+                }
+                break;
+            case IFK: 
+                snprintf(label, sizeof(label), "IF"); 
+                color = "orange";
+                break;
+            case WHILEK: 
+                snprintf(label, sizeof(label), "WHILE"); 
+                color = "orange";
+                break;
+            case RETURNK: 
+                snprintf(label, sizeof(label), "RETURN"); 
+                color = "pink";
+                break;
+            case COMPK: 
+                snprintf(label, sizeof(label), "Compound\\nStatement"); 
+                color = "lightcyan";
+                break;
+        }
+    } else if (tree->nodekind == VARK) {
+        color = "lightyellow";
+        char *esc_name = escape_label(tree->kind.var.attr.name);
+        
+        if (tree->kind.var.varKind == KIND_FUNC) {
+            snprintf(label, sizeof(label), "%s\\n(function)", esc_name);
+        } else if (tree->kind.var.varKind == KIND_ARRAY) {
+            if (tree->kind.var.acesso == DECLK) {
+                snprintf(label, sizeof(label), "%s\\n(array decl)", esc_name);
+            } else {
+                snprintf(label, sizeof(label), "%s\\n(array access)", esc_name);
+            }
+        } else {
+            if (tree->kind.var.acesso == DECLK) {
+                snprintf(label, sizeof(label), "%s\\n(declaration)", esc_name);
+            } else {
+                snprintf(label, sizeof(label), "%s\\n(variable)", esc_name);
+            }
+        }
+        free(esc_name);
+    } else if (tree->nodekind == EXPK) {
+        color = "lavender";
+        switch (tree->kind.exp) {
+            case OPK:
+                snprintf(label, sizeof(label), "Op: %s", get_op_symbol(tree->op));
+                color = "plum";
+                shape = "ellipse";
+                break;
+            case CONSTK:
+                snprintf(label, sizeof(label), "Const\\n%d", tree->kind.var.attr.val);
+                color = "lightpink";
+                shape = "ellipse";
+                break;
+            case IDK: {
+                char *esc_name = escape_label(tree->kind.var.attr.name);
+                snprintf(label, sizeof(label), "ID: %s", esc_name);
+                free(esc_name);
+                break;
+            }
+            case ASSIGNK:
+                snprintf(label, sizeof(label), "Assign\\n=");
+                color = "khaki";
+                break;
+            case CALLK: {
+                char *esc_name = escape_label(tree->kind.var.attr.name);
+                snprintf(label, sizeof(label), "Call\\n%s()", esc_name);
+                free(esc_name);
+                color = "peachpuff";
+                break;
+            }
+            case VECTORK: {
+                char *esc_name = escape_label(tree->kind.var.attr.name);
+                if (tree->child[0]) {
+                    snprintf(label, sizeof(label), "Vector\\n%s[..]", esc_name);
+                } else {
+                    snprintf(label, sizeof(label), "Vector\\n%s", esc_name);
+                }
+                free(esc_name);
+                break;
+            }
+        }
+    }
+    
+    /* Cria o nó */
+    fprintf(fp, "  node%d [label=\"%s\", shape=%s, style=\"filled\", fillcolor=%s];\n",
+            current_id, label, shape, color);
+    
+    /* Liga ao pai se existir */
+    if (parent_id >= 0) {
+        fprintf(fp, "  node%d -> node%d;\n", parent_id, current_id);
+    }
+    
+    /* Processa filhos */
+    for (int i = 0; i < MAXCHILDREN; i++) {
+        if (tree->child[i] != NULL) {
+            printTreeDOT_recursive(ctx, tree->child[i], current_id);
+        }
+    }
+    
+    /* Processa irmãos */
+    if (tree->sibling != NULL) {
+        int sibling_id = printTreeDOT_recursive(ctx, tree->sibling, parent_id);
+        if (sibling_id >= 0) {
+            fprintf(fp, "  node%d -> node%d [style=dashed, color=gray, constraint=false];\n",
+                    current_id, sibling_id);
+        }
+    }
+    
+    return current_id;
+}
+
+/* Função principal para gerar arquivo DOT */
+void printTreeDOT(TreeNode *tree, const char *filename) {
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro: nao foi possivel criar arquivo '%s'\n", filename);
+        return;
+    }
+    
+    /* Cria contexto */
+    DotContext ctx = {0, fp};
+    
+    /* Cabeçalho */
+    fprintf(fp, "digraph AST {\n");
+    fprintf(fp, "  rankdir=TB;\n");
+    fprintf(fp, "  node [fontname=\"Arial\", fontsize=12];\n");
+    fprintf(fp, "  edge [fontname=\"Arial\", fontsize=10];\n");
+    fprintf(fp, "  \n");
+    
+    /* Gera a árvore */
+    printTreeDOT_recursive(&ctx, tree, -1);
+    
+    /* Rodapé */
+    fprintf(fp, "}\n");
+    
+    fclose(fp);
+    printf("\nArquivo GraphViz gerado: %s\n", filename);
+    printf("Para gerar a imagem, execute:\n");
+    printf("  dot -Tpng %s -o ast.png\n", filename);
+    printf("  ou\n");
+    printf("  dot -Tsvg %s -o ast.svg\n", filename);
+}
+
 /* ===== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ===== */
 
-Escopo *escopo_atual = NULL;
-Escopo *lista_escopos = NULL;
-
-void enter_scope() {
+void enter_scope_ctx(ParserContext *ctx) {
     Escopo *novo = (Escopo*) malloc(sizeof(Escopo));
     novo->simbolos = NULL;
-    novo->pai = escopo_atual;
-    novo->next_all = lista_escopos;
-    lista_escopos = novo;
-    escopo_atual = novo;
+    novo->pai = ctx->escopo_atual;
+    novo->next_all = ctx->lista_escopos;
+    ctx->lista_escopos = novo;
+    ctx->escopo_atual = novo;
 }
 
-void leave_scope() {
-    if (!escopo_atual) return;
-    escopo_atual = escopo_atual->pai;
+void leave_scope_ctx(ParserContext *ctx) {
+    if (!ctx->escopo_atual) return;
+    ctx->escopo_atual = ctx->escopo_atual->pai;
 }
 
-Simbolo* lookup_symbol_current(const char *nome) {
-    if (!escopo_atual) return NULL;
-    Simbolo *s = escopo_atual->simbolos;
+Simbolo* lookup_symbol_current_ctx(ParserContext *ctx, const char *nome) {
+    if (!ctx->escopo_atual) return NULL;
+    Simbolo *s = ctx->escopo_atual->simbolos;
     while (s) {
         if (strcmp(s->nome, nome) == 0) return s;
         s = s->prox;
@@ -769,8 +996,8 @@ Simbolo* lookup_symbol_current(const char *nome) {
     return NULL;
 }
 
-Simbolo* lookup_symbol(const char *nome) {
-    Escopo *e = escopo_atual;
+Simbolo* lookup_symbol_ctx(ParserContext *ctx, const char *nome) {
+    Escopo *e = ctx->escopo_atual;
     while (e) {
         Simbolo *s = e->simbolos;
         while (s) {
@@ -782,15 +1009,15 @@ Simbolo* lookup_symbol(const char *nome) {
     return NULL;
 }
 
-void insert_symbol(const char *nome, TipoVar tipo, TipoSimbolo kind, int linha) {
-    if (!escopo_atual) {
+void insert_symbol_ctx(ParserContext *ctx, const char *nome, TipoVar tipo, TipoSimbolo kind, int linha) {
+    if (!ctx->escopo_atual) {
         fprintf(stderr, "Erro interno: nenhum escopo ativo\n");
         return;
     }
     
-    if (lookup_symbol_current(nome)) {
+    if (lookup_symbol_current_ctx(ctx, nome)) {
         fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
-        has_errors = 1;
+        ctx->has_errors = 1;
         return;
     }
     
@@ -802,18 +1029,18 @@ void insert_symbol(const char *nome, TipoVar tipo, TipoSimbolo kind, int linha) 
     s->num_params = 0;
     s->param_types = NULL;
     s->linha = linha;
-    s->prox = escopo_atual->simbolos;
+    s->prox = ctx->escopo_atual->simbolos;
     s->is_param = 0;
     s->def_scope = NULL;
-    escopo_atual->simbolos = s;
+    ctx->escopo_atual->simbolos = s;
 }
 
-void insert_array(const char *nome, int tamanho, int linha) {
-    if (!escopo_atual) return;
+void insert_array_ctx(ParserContext *ctx, const char *nome, int tamanho, int linha) {
+    if (!ctx->escopo_atual) return;
     
-    if (lookup_symbol_current(nome)) {
+    if (lookup_symbol_current_ctx(ctx, nome)) {
         fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
-        has_errors = 1;
+        ctx->has_errors = 1;
         return;
     }
     
@@ -825,16 +1052,16 @@ void insert_array(const char *nome, int tamanho, int linha) {
     s->num_params = 0;
     s->param_types = NULL;
     s->linha = linha;
-    s->prox = escopo_atual->simbolos;
-    escopo_atual->simbolos = s;
+    s->prox = ctx->escopo_atual->simbolos;
+    ctx->escopo_atual->simbolos = s;
 }
 
-void insert_function(const char *nome, TipoVar tipo_retorno, int linha) {
-    if (!escopo_atual) return;
+void insert_function_ctx(ParserContext *ctx, const char *nome, TipoVar tipo_retorno, int linha) {
+    if (!ctx->escopo_atual) return;
     
-    if (lookup_symbol_current(nome)) {
+    if (lookup_symbol_current_ctx(ctx, nome)) {
         fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
-        has_errors = 1;
+        ctx->has_errors = 1;
         return;
     }
     
@@ -846,31 +1073,31 @@ void insert_function(const char *nome, TipoVar tipo_retorno, int linha) {
     s->num_params = 0;
     s->param_types = NULL;
     s->linha = linha;
-    s->prox = escopo_atual->simbolos;
-    escopo_atual->simbolos = s;
+    s->prox = ctx->escopo_atual->simbolos;
+    ctx->escopo_atual->simbolos = s;
 }
 
-TipoVar check_expression_type(const char *op, TipoVar t1, TipoVar t2, int linha) {
+TipoVar check_expression_type_ctx(ParserContext *ctx, const char *op, TipoVar t1, TipoVar t2, int linha) {
     if (t1 == TYPE_ERROR || t2 == TYPE_ERROR) {
         return TYPE_ERROR;
     }
     
     if (t1 == TYPE_VOID || t2 == TYPE_VOID) {
         fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s com tipo void\n", linha, op);
-        has_errors = 1;
+        ctx->has_errors = 1;
         return TYPE_ERROR;
     }
     
     if (t1 != TYPE_INT || t2 != TYPE_INT) {
         fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s requer operandos inteiros\n", linha, op);
-        has_errors = 1;
+        ctx->has_errors = 1;
         return TYPE_ERROR;
     }
     
     return TYPE_INT;
 }
 
-void ExibirTabelaSimbolos() {
+void ExibirTabelaSimbolos_ctx(ParserContext *ctx) {
     printf("\n");
     printf("--------------------------------------------------------------------------------------\n");
     printf("|                      TABELA DE SIMBOLOS DO COMPILADOR C-MINUS                      |\n");
@@ -883,7 +1110,7 @@ void ExibirTabelaSimbolos() {
     
     /* Conta e armazena ponteiros para todos os escopos */
     int count = 0;
-    Escopo *e = lista_escopos;
+    Escopo *e = ctx->lista_escopos;
     while (e) { count++; e = e->next_all; }
     if (count == 0) {
         printf("\n");
@@ -892,7 +1119,7 @@ void ExibirTabelaSimbolos() {
     
     Escopo **arr = (Escopo**) malloc(count * sizeof(Escopo*));
     int i = 0;
-    e = lista_escopos;
+    e = ctx->lista_escopos;
     while (e) { arr[i++] = e; e = e->next_all; }
 
     /* printf("%-6d | ", computed_params); */
@@ -957,8 +1184,8 @@ void ExibirTabelaSimbolos() {
     printf("\n");
 }
 
-void free_all_scopes() {
-    Escopo *e = lista_escopos;
+void free_all_scopes_ctx(ParserContext *ctx) {
+    Escopo *e = ctx->lista_escopos;
     while (e) {
         Simbolo *s = e->simbolos;
         while (s) {
@@ -972,8 +1199,8 @@ void free_all_scopes() {
         e = e->next_all;
         free(tmp_e);
     }
-    lista_escopos = NULL;
-    escopo_atual = NULL;
+    ctx->lista_escopos = NULL;
+    ctx->escopo_atual = NULL;
 }
 
 /* ===== IMPLEMENTAÇÃO DAS FUNÇÕES DA AST ===== */
@@ -1136,27 +1363,52 @@ int main(int argc, char **argv) {
     } else {
         yyin = stdin;
     }
+
+    /* Cria contexto do parser */
+    ParserContext *ctx = parser_context_create();
+
+    if (!ctx) {
+        fprintf(stderr, "Erro: falha ao criar o contexto do parser\n");
+        if (yyin != stdin) fclose(yyin);
+        return 1;
+    }
     
     /* Cria escopo global */
-    enter_scope();
+    enter_scope_ctx(ctx);
     
     /* Adiciona funções built-in input e output */
-    insert_symbol("input", TYPE_INT, KIND_FUNC, 0);
-    insert_symbol("output", TYPE_VOID, KIND_FUNC, 0);
+    insert_symbol_ctx(ctx, "input", TYPE_INT, KIND_FUNC, 0);
+    insert_symbol_ctx(ctx, "output", TYPE_VOID, KIND_FUNC, 0);
     
-    yyparse();
+    yyparse(ctx);
     
-    ExibirTabelaSimbolos();
+    ExibirTabelaSimbolos_ctx(ctx);
+
+    /* Se não houver erros, imprime a AST */
+    if (!ctx->has_errors && ctx->ast_root) {
+        printf("\n");
+        printf("================================================================================\n");
+        printf("                      ARVORE SINTATICA ABSTRATA (AST)\n");
+        printf("================================================================================\n");
+        printTree(ctx->ast_root, 0);
+        printf("================================================================================\n");
+
+        printTreeDOT(ctx->ast_root, "ast.dot");
+    }
 
     /* Libera todos os escopos e simbolos */
-    free_all_scopes();
+    free_all_scopes_ctx(ctx);
+
+    int return_code = ctx->has_errors ? 1 : 0;
+
+    parser_context_destroy(ctx);
     
     if (yyin != stdin) fclose(yyin);
-    
-    return has_errors ? 1 : 0;
+
+    return return_code;
 }
 
-void yyerror(const char *s) {
+void yyerror(ParserContext *ctx, const char *s) {
     fprintf(stderr, "Erro sintatico linha %d: %s\n", yylineno, s);
-    has_errors = 1;
+    ctx->has_errors = 1;
 }
