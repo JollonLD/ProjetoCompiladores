@@ -135,8 +135,7 @@ extern int yydebug;
     TreeNode* newVarNode(ExpKind kind);
     void printTree(TreeNode *tree, int indent);
 
-
-#line 140 "cminus.tab.h"
+#line 139 "cminus.tab.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -182,7 +181,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 110 "cminusSintSem.y"
+#line 109 "cminusSintSem.y"
 
     int ival;
     char *id;
@@ -193,7 +192,7 @@ union YYSTYPE
     } var_info;
     TreeNode *node;
 
-#line 197 "cminus.tab.h"
+#line 196 "cminus.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

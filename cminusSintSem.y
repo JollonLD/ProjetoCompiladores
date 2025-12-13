@@ -104,7 +104,6 @@
     TreeNode* newExpNode(ExpKind kind);
     TreeNode* newVarNode(ExpKind kind);
     void printTree(TreeNode *tree, int indent);
-
 }
 
 %union {
@@ -736,7 +735,7 @@ arg_list :
 
 /* ===== FUNÇÕES PARA GRAPHVIZ ===== */
 
-/* Estrutura par contexto de impressão DOT */
+/* Estrutura para contexto de impressão DOT */
 typedef struct {
     int node_counter;
     FILE *fp;
@@ -764,17 +763,6 @@ static char *escape_label(const char *str) {
     return escaped;
 }
 
-/* Função para obter nome do tipo */
-static const char* get_type_name(TipoVar type) {
-    switch (type) {
-        case TYPE_INT: return "int";
-        case TYPE_VOID: return "void";
-        case TYPE_INT_ARRAY: return "int[]";
-        case TYPE_ERROR: return "ERROR";
-        default: return "unknown";
-    }
-}
-
 /* Função para obter símbolo do operador */
 static const char* get_op_symbol(int op) {
     switch (op) {
@@ -793,7 +781,7 @@ static const char* get_op_symbol(int op) {
 }
 
 /* Função recursiva para gerar GraphViz DOT */
-static int printTreeDOT_recursive(DotContext *ctx, TreeNode *tree, int parent_id) {
+static int printTreeDOT_simplified(DotContext *ctx, TreeNode *tree, int parent_id) {
     if (tree == NULL) return -1;
     
     int current_id = ctx->node_counter++;
@@ -805,136 +793,150 @@ static int printTreeDOT_recursive(DotContext *ctx, TreeNode *tree, int parent_id
     char label[256] = "";
     
     if (tree->nodekind == STMTK) {
-        color = "lightgreen";
-        switch (tree->kind.stmt) {
+        switch(tree->kind.stmt) {
             case INTEGERK:
-                if (tree->child[0] && tree->child[0]->nodekind == VARK) {
-                    if (tree->child[0]->kind.var.varKind == KIND_FUNC) {
-                        snprintf(label, sizeof(label), "Function\\n[int]");
-                        color = "gold";
-                    } else if (tree->child[0]->kind.var.varKind == KIND_ARRAY) {
-                        snprintf(label, sizeof(label), "Array Decl\\n[int]");
-                    } else {
-                        snprintf(label, sizeof(label), "Var Decl\\n[int]");
-                    }
-                } else {
-                    snprintf(label, sizeof(label), "Type: int");
-                }
-                break;
+
             case VOIDK:
-                if (tree->child[0] && tree->child[0]->nodekind == VARK && 
-                    tree->child[0]->kind.var.varKind == KIND_FUNC) {
-                    snprintf(label, sizeof(label), "Function\\n[void]");
-                    color = "gold";
-                } else {
-                    snprintf(label, sizeof(label), "Type: void");
+                /* Pula nós de tipo */
+                if (tree->child[0]) {
+                    printTreeDOT_simplified(ctx, tree->child[0], parent_id);
                 }
-                break;
-            case IFK: 
-                snprintf(label, sizeof(label), "IF"); 
+
+                if (tree->sibling) {
+                    printTreeDOT_simplified(ctx, tree->sibling, parent_id);
+                }
+                
+                return -1; /* Indica que pulou */
+
+            case IFK:
+                snprintf(label, sizeof(label), "IF");
                 color = "orange";
+                shape = "diamond";
                 break;
-            case WHILEK: 
-                snprintf(label, sizeof(label), "WHILE"); 
+
+            case WHILEK:
+                snprintf(label, sizeof(label), "WHILE");
                 color = "orange";
+                shape = "diamond";
                 break;
-            case RETURNK: 
-                snprintf(label, sizeof(label), "RETURN"); 
+
+            case RETURNK:
+                snprintf(label, sizeof(label), "RETURN");
                 color = "pink";
                 break;
-            case COMPK: 
-                snprintf(label, sizeof(label), "Compound\\nStatement"); 
-                color = "lightcyan";
-                break;
+
+            case COMPK:
+                /* Pula compound statements, processa filhos e irmãos */
+                for (int i = 0; i < MAXCHILDREN; i++) {
+                    if (tree->child[i] != NULL) {
+                        printTreeDOT_simplified(ctx, tree->child[i], parent_id);
+                    }
+                }
+
+                /* Processa irmãos mesmo pulando o nó */
+                if (tree->sibling) {
+                    printTreeDOT_simplified(ctx, tree->sibling, parent_id);
+                }
+
+                return -1; /* Indica que pulou */
         }
-    } else if (tree->nodekind == VARK) {
-        color = "lightyellow";
+    } 
+    else if (tree->nodekind == VARK) {
         char *esc_name = escape_label(tree->kind.var.attr.name);
         
         if (tree->kind.var.varKind == KIND_FUNC) {
-            snprintf(label, sizeof(label), "%s\\n(function)", esc_name);
-        } else if (tree->kind.var.varKind == KIND_ARRAY) {
+            snprintf(label, sizeof(label), "Function\\n%s", esc_name);
+            color = "gold";
+            shape = "ellipse";
+        } 
+        else if (tree->kind.var.varKind == KIND_ARRAY) {
             if (tree->kind.var.acesso == DECLK) {
-                snprintf(label, sizeof(label), "%s\\n(array decl)", esc_name);
-            } else {
-                snprintf(label, sizeof(label), "%s\\n(array access)", esc_name);
+                snprintf(label, sizeof(label), "Array\\n%s", esc_name);
+                color = "lightgreen";
+            } 
+            else {
+                snprintf(label, sizeof(label), "%s[]", esc_name);
+                color = "lightyellow";
             }
-        } else {
+        } 
+        else {
             if (tree->kind.var.acesso == DECLK) {
-                snprintf(label, sizeof(label), "%s\\n(declaration)", esc_name);
-            } else {
-                snprintf(label, sizeof(label), "%s\\n(variable)", esc_name);
+                snprintf(label, sizeof(label), "Var\\n%s", esc_name);
+                color = "lightgreen";
+            } 
+            else {
+                snprintf(label, sizeof(label), "%s", esc_name);
+                color = "lightyellow";
             }
         }
+
         free(esc_name);
-    } else if (tree->nodekind == EXPK) {
-        color = "lavender";
+    } 
+    else if (tree->nodekind == EXPK) {
         switch (tree->kind.exp) {
             case OPK:
-                snprintf(label, sizeof(label), "Op: %s", get_op_symbol(tree->op));
-                color = "plum";
-                shape = "ellipse";
+                snprintf(label, sizeof(label), "%s", get_op_symbol(tree->op));
+                color = "lavender";
+                shape = "circle";
                 break;
+
             case CONSTK:
-                snprintf(label, sizeof(label), "Const\\n%d", tree->kind.var.attr.val);
+                snprintf(label, sizeof(label), "%d", tree->kind.var.attr.val);
                 color = "lightpink";
-                shape = "ellipse";
+                shape = "circle";
                 break;
+
             case IDK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                snprintf(label, sizeof(label), "ID: %s", esc_name);
+                snprintf(label, sizeof(label), "%s", esc_name);
                 free(esc_name);
-                break;
+                color = "lightyellow";
             }
+            break;
+
             case ASSIGNK:
-                snprintf(label, sizeof(label), "Assign\\n=");
+                snprintf(label, sizeof(label), "=");
                 color = "khaki";
+                shape = "circle";
                 break;
+
             case CALLK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                snprintf(label, sizeof(label), "Call\\n%s()", esc_name);
+                snprintf(label, sizeof(label), "%s()", esc_name);
                 free(esc_name);
                 color = "peachpuff";
-                break;
             }
+            break;
+
             case VECTORK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                if (tree->child[0]) {
-                    snprintf(label, sizeof(label), "Vector\\n%s[..]", esc_name);
-                } else {
-                    snprintf(label, sizeof(label), "Vector\\n%s", esc_name);
-                }
+                snprintf(label, sizeof(label), "%s[]", esc_name);
                 free(esc_name);
-                break;
+                color = "lightcyan";
             }
+            break;
         }
     }
+
+    fprintf(fp, "  node%d [label=\"%s\", shape=%s, style=\"filled\", fillcolor=%s];\n", current_id, label, shape, color);
     
-    /* Cria o nó */
-    fprintf(fp, "  node%d [label=\"%s\", shape=%s, style=\"filled\", fillcolor=%s];\n",
-            current_id, label, shape, color);
-    
-    /* Liga ao pai se existir */
+    /* Liga ao pai */
     if (parent_id >= 0) {
         fprintf(fp, "  node%d -> node%d;\n", parent_id, current_id);
     }
-    
+
     /* Processa filhos */
     for (int i = 0; i < MAXCHILDREN; i++) {
         if (tree->child[i] != NULL) {
-            printTreeDOT_recursive(ctx, tree->child[i], current_id);
+            printTreeDOT_simplified(ctx, tree->child[i], current_id);
         }
     }
     
     /* Processa irmãos */
     if (tree->sibling != NULL) {
-        int sibling_id = printTreeDOT_recursive(ctx, tree->sibling, parent_id);
-        if (sibling_id >= 0) {
-            fprintf(fp, "  node%d -> node%d [style=dashed, color=gray, constraint=false];\n",
-                    current_id, sibling_id);
-        }
+        printTreeDOT_simplified(ctx, tree->sibling, parent_id);
     }
-    
+
     return current_id;
 }
 
@@ -952,22 +954,121 @@ void printTreeDOT(TreeNode *tree, const char *filename) {
     /* Cabeçalho */
     fprintf(fp, "digraph AST {\n");
     fprintf(fp, "  rankdir=TB;\n");
-    fprintf(fp, "  node [fontname=\"Arial\", fontsize=12];\n");
-    fprintf(fp, "  edge [fontname=\"Arial\", fontsize=10];\n");
+    fprintf(fp, "  node [fontname=\"Arial\", fontsize=14, fontcolor=\"#333333\"];\n");
+    fprintf(fp, "  edge [fontname=\"Arial\", fontsize=10, color=\"#666666\"];\n");
+    fprintf(fp, "  bgcolor=\"white\";\n");
+    fprintf(fp, "  \n");
+    fprintf(fp, "  // AST Simplificada (Abstract Syntax Tree)\n");
     fprintf(fp, "  \n");
     
     /* Gera a árvore */
-    printTreeDOT_recursive(&ctx, tree, -1);
+    printTreeDOT_simplified(&ctx, tree, -1);
     
     /* Rodapé */
     fprintf(fp, "}\n");
-    
     fclose(fp);
+
     printf("\nArquivo GraphViz gerado: %s\n", filename);
     printf("Para gerar a imagem, execute:\n");
-    printf("  dot -Tpng %s -o ast.png\n", filename);
-    printf("  ou\n");
-    printf("  dot -Tsvg %s -o ast.svg\n", filename);
+    printf("   dot -Tpng %s -o ast.png\n", filename);
+    printf("   dot -Tsvg %s -o ast.svg (recomendado)\n\n", filename);
+}
+
+/* Impressão textual (opcional) */
+void printTreeSimplified(TreeNode *tree, int indent) {
+    if (tree == NULL) return;
+
+    for (int i = 0; i < indent; i++) printf(" ");
+
+    if (tree->nodekind == STMTK) {
+        switch (tree->kind.stmt) {
+            case INTEGERK:
+
+            case VOIDK:
+                /* Pula nós de tipo */
+                if (tree->child[0]) {
+                    printTreeSimplified(tree->child[0], indent);
+                    printTreeSimplified(tree->sibling, indent);
+                    return;
+                }
+                break;
+                
+            case IFK: 
+                printf("IF\n"); 
+                break;
+
+            case WHILEK: 
+                printf("WHILE\n"); 
+                break;
+
+            case RETURNK: 
+                printf("RETURN\n"); 
+                break;
+
+            case COMPK:
+                /* Pula compound, vai direto aos filhos */
+                for (int i = 0; i < MAXCHILDREN; i++) {
+                    printTreeSimplified(tree->child[i], indent);
+                }
+                printTreeSimplified(tree->sibling, indent);
+                return;
+        }
+    } 
+    else if (tree->nodekind == VARK) {
+        if (tree->kind.var.varKind == KIND_FUNC) {
+            printf("Function: %s\n", tree->kind.var.attr.name);
+        } 
+        else if (tree->kind.var.varKind == KIND_ARRAY) {
+            if (tree->kind.var.acesso == DECLK) {
+                printf("Array: %s\n", tree->kind.var.attr.name);
+            } 
+            else {
+                printf("%s[]\n", tree->kind.var.attr.name);
+            }
+        } 
+        else {
+            if (tree->kind.var.acesso == DECLK) {
+                printf("Var: %s\n", tree->kind.var.attr.name);
+            } 
+            else {
+                printf("%s\n", tree->kind.var.attr.name);
+            }
+        }
+    } 
+    else if (tree->nodekind == EXPK) {
+        switch (tree->kind.exp) {
+            case OPK:
+                printf("%s\n", get_op_symbol(tree->op));
+                break;
+
+            case CONSTK: 
+                printf("%d\n", tree->kind.var.attr.val); 
+                break;
+
+            case IDK: 
+                printf("%s\n", tree->kind.var.attr.name); 
+                break;
+
+            case ASSIGNK: 
+                printf("=\n"); 
+                break;
+
+            case CALLK: 
+                printf("%s()\n", tree->kind.var.attr.name); 
+                break;
+
+            case VECTORK: 
+                printf("%s[]\n", tree->kind.var.attr.name);
+                break;
+        }
+    }
+    
+    /* Imprime filhos */
+    for (int i = 0; i < MAXCHILDREN; i++)
+        printTreeSimplified(tree->child[i], indent + 1);
+    
+    /* Imprime irmãos */
+    printTreeSimplified(tree->sibling, indent);
 }
 
 /* ===== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ===== */

@@ -560,13 +560,13 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   154,   154,   168,   180,   185,   186,   191,   210,   245,
-     248,   256,   255,   291,   292,   293,   298,   310,   315,   341,
-     371,   381,   393,   398,   410,   415,   416,   417,   418,   419,
-     423,   423,   433,   434,   439,   454,   473,   491,   497,   507,
-     529,   534,   562,   594,   609,   613,   614,   615,   616,   617,
-     618,   623,   638,   642,   643,   648,   663,   667,   668,   673,
-     674,   675,   676,   687,   714,   715,   720,   732
+       0,   153,   153,   167,   179,   184,   185,   190,   209,   244,
+     247,   255,   254,   290,   291,   292,   297,   309,   314,   340,
+     370,   380,   392,   397,   409,   414,   415,   416,   417,   418,
+     422,   422,   432,   433,   438,   453,   472,   490,   496,   506,
+     528,   533,   561,   593,   608,   612,   613,   614,   615,   616,
+     617,   622,   637,   641,   642,   647,   662,   666,   667,   672,
+     673,   674,   675,   686,   713,   714,   719,   731
 };
 #endif
 
@@ -1200,7 +1200,7 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* program: declaration_list  */
-#line 155 "cminusSintSem.y"
+#line 154 "cminusSintSem.y"
     { 
         (yyval.node) = (yyvsp[0].node);
         ctx->ast_root = (yyval.node);
@@ -1214,7 +1214,7 @@ yyreduce:
     break;
 
   case 3: /* declaration_list: declaration_list declaration  */
-#line 169 "cminusSintSem.y"
+#line 168 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[-1].node);
         if (t != NULL) {
@@ -1230,25 +1230,25 @@ yyreduce:
     break;
 
   case 4: /* declaration_list: declaration  */
-#line 180 "cminusSintSem.y"
+#line 179 "cminusSintSem.y"
                   { (yyval.node) = (yyvsp[0].node); }
 #line 1236 "cminus.tab.c"
     break;
 
   case 5: /* declaration: var_declaration  */
-#line 185 "cminusSintSem.y"
+#line 184 "cminusSintSem.y"
                     { (yyval.node) = (yyvsp[0].node); }
 #line 1242 "cminus.tab.c"
     break;
 
   case 6: /* declaration: fun_declaration  */
-#line 186 "cminusSintSem.y"
+#line 185 "cminusSintSem.y"
                       { (yyval.node) = (yyvsp[0].node); }
 #line 1248 "cminus.tab.c"
     break;
 
   case 7: /* var_declaration: type_specifier ID SEMI  */
-#line 192 "cminusSintSem.y"
+#line 191 "cminusSintSem.y"
     {
         /* Análise semântica */
         insert_symbol_ctx(ctx, (yyvsp[-1].id), (yyvsp[-2].tipo), KIND_VAR, yylineno);
@@ -1271,7 +1271,7 @@ yyreduce:
     break;
 
   case 8: /* var_declaration: type_specifier ID LBRACK NUM RBRACK SEMI  */
-#line 211 "cminusSintSem.y"
+#line 210 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-5].tipo) == TYPE_VOID) {
@@ -1306,7 +1306,7 @@ yyreduce:
     break;
 
   case 9: /* type_specifier: INT  */
-#line 245 "cminusSintSem.y"
+#line 244 "cminusSintSem.y"
          { 
         (yyval.tipo) = TYPE_INT;
     }
@@ -1314,7 +1314,7 @@ yyreduce:
     break;
 
   case 10: /* type_specifier: VOID  */
-#line 248 "cminusSintSem.y"
+#line 247 "cminusSintSem.y"
            { 
         (yyval.tipo) = TYPE_VOID;
     }
@@ -1322,7 +1322,7 @@ yyreduce:
     break;
 
   case 11: /* $@1: %empty  */
-#line 256 "cminusSintSem.y"
+#line 255 "cminusSintSem.y"
     {
         /* Análise semântica */
         insert_function_ctx(ctx, (yyvsp[0].id), (yyvsp[-1].tipo), yylineno);
@@ -1336,7 +1336,7 @@ yyreduce:
     break;
 
   case 12: /* fun_declaration: type_specifier ID $@1 LPAREN params RPAREN compound_stmt  */
-#line 266 "cminusSintSem.y"
+#line 265 "cminusSintSem.y"
     {
         leave_scope_ctx(ctx);
         
@@ -1362,25 +1362,25 @@ yyreduce:
     break;
 
   case 13: /* params: param_list  */
-#line 291 "cminusSintSem.y"
+#line 290 "cminusSintSem.y"
                { (yyval.node) = (yyvsp[0].node); }
 #line 1368 "cminus.tab.c"
     break;
 
   case 14: /* params: VOID  */
-#line 292 "cminusSintSem.y"
+#line 291 "cminusSintSem.y"
            { (yyval.node) = NULL; }
 #line 1374 "cminus.tab.c"
     break;
 
   case 15: /* params: %empty  */
-#line 293 "cminusSintSem.y"
+#line 292 "cminusSintSem.y"
                   { (yyval.node) = NULL; }
 #line 1380 "cminus.tab.c"
     break;
 
   case 16: /* param_list: param_list COMMA param  */
-#line 299 "cminusSintSem.y"
+#line 298 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[-2].node);
         if (t != NULL) {
@@ -1396,13 +1396,13 @@ yyreduce:
     break;
 
   case 17: /* param_list: param  */
-#line 310 "cminusSintSem.y"
+#line 309 "cminusSintSem.y"
             { (yyval.node) = (yyvsp[0].node); }
 #line 1402 "cminus.tab.c"
     break;
 
   case 18: /* param: type_specifier ID  */
-#line 316 "cminusSintSem.y"
+#line 315 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-1].tipo) == TYPE_VOID) {
@@ -1432,7 +1432,7 @@ yyreduce:
     break;
 
   case 19: /* param: type_specifier ID LBRACK RBRACK  */
-#line 342 "cminusSintSem.y"
+#line 341 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-3].tipo) == TYPE_VOID) {
@@ -1462,7 +1462,7 @@ yyreduce:
     break;
 
   case 20: /* compound_stmt: LBRACE local_declarations statement_list RBRACE  */
-#line 372 "cminusSintSem.y"
+#line 371 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(COMPK);
         (yyval.node)->child[0] = (yyvsp[-2].node);  /* declarações locais */
@@ -1473,7 +1473,7 @@ yyreduce:
     break;
 
   case 21: /* local_declarations: local_declarations var_declaration  */
-#line 382 "cminusSintSem.y"
+#line 381 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[-1].node);
         if (t != NULL) {
@@ -1489,13 +1489,13 @@ yyreduce:
     break;
 
   case 22: /* local_declarations: %empty  */
-#line 393 "cminusSintSem.y"
+#line 392 "cminusSintSem.y"
                   { (yyval.node) = NULL; }
 #line 1495 "cminus.tab.c"
     break;
 
   case 23: /* statement_list: statement_list statement  */
-#line 399 "cminusSintSem.y"
+#line 398 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[-1].node);
         if (t != NULL) {
@@ -1511,49 +1511,49 @@ yyreduce:
     break;
 
   case 24: /* statement_list: %empty  */
-#line 410 "cminusSintSem.y"
+#line 409 "cminusSintSem.y"
                   { (yyval.node) = NULL; }
 #line 1517 "cminus.tab.c"
     break;
 
   case 25: /* statement: expression_stmt  */
-#line 415 "cminusSintSem.y"
+#line 414 "cminusSintSem.y"
                     { (yyval.node) = (yyvsp[0].node); }
 #line 1523 "cminus.tab.c"
     break;
 
   case 26: /* statement: compound_stmt_with_scope  */
-#line 416 "cminusSintSem.y"
+#line 415 "cminusSintSem.y"
                                { (yyval.node) = (yyvsp[0].node); }
 #line 1529 "cminus.tab.c"
     break;
 
   case 27: /* statement: selection_stmt  */
-#line 417 "cminusSintSem.y"
+#line 416 "cminusSintSem.y"
                      { (yyval.node) = (yyvsp[0].node); }
 #line 1535 "cminus.tab.c"
     break;
 
   case 28: /* statement: iteration_stmt  */
-#line 418 "cminusSintSem.y"
+#line 417 "cminusSintSem.y"
                      { (yyval.node) = (yyvsp[0].node); }
 #line 1541 "cminus.tab.c"
     break;
 
   case 29: /* statement: return_stmt  */
-#line 419 "cminusSintSem.y"
+#line 418 "cminusSintSem.y"
                   { (yyval.node) = (yyvsp[0].node); }
 #line 1547 "cminus.tab.c"
     break;
 
   case 30: /* $@2: %empty  */
-#line 423 "cminusSintSem.y"
+#line 422 "cminusSintSem.y"
     { enter_scope_ctx(ctx); }
 #line 1553 "cminus.tab.c"
     break;
 
   case 31: /* compound_stmt_with_scope: $@2 compound_stmt  */
-#line 425 "cminusSintSem.y"
+#line 424 "cminusSintSem.y"
     { 
         leave_scope_ctx(ctx);
         (yyval.node) = (yyvsp[0].node);
@@ -1562,19 +1562,19 @@ yyreduce:
     break;
 
   case 32: /* expression_stmt: expression SEMI  */
-#line 433 "cminusSintSem.y"
+#line 432 "cminusSintSem.y"
                     { (yyval.node) = (yyvsp[-1].node); }
 #line 1568 "cminus.tab.c"
     break;
 
   case 33: /* expression_stmt: SEMI  */
-#line 434 "cminusSintSem.y"
+#line 433 "cminusSintSem.y"
            { (yyval.node) = NULL; }
 #line 1574 "cminus.tab.c"
     break;
 
   case 34: /* selection_stmt: IF LPAREN expression RPAREN statement  */
-#line 440 "cminusSintSem.y"
+#line 439 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-2].node) && (yyvsp[-2].node)->type != TYPE_INT) {
@@ -1593,7 +1593,7 @@ yyreduce:
     break;
 
   case 35: /* selection_stmt: IF LPAREN expression RPAREN statement ELSE statement  */
-#line 455 "cminusSintSem.y"
+#line 454 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-4].node) && (yyvsp[-4].node)->type != TYPE_INT) {
@@ -1612,7 +1612,7 @@ yyreduce:
     break;
 
   case 36: /* iteration_stmt: WHILE LPAREN expression RPAREN statement  */
-#line 474 "cminusSintSem.y"
+#line 473 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[-2].node) && (yyvsp[-2].node)->type != TYPE_INT) {
@@ -1630,7 +1630,7 @@ yyreduce:
     break;
 
   case 37: /* return_stmt: RETURN SEMI  */
-#line 492 "cminusSintSem.y"
+#line 491 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(RETURNK);
         (yyval.node)->child[0] = NULL;  /* sem expressão */
@@ -1640,7 +1640,7 @@ yyreduce:
     break;
 
   case 38: /* return_stmt: RETURN expression SEMI  */
-#line 498 "cminusSintSem.y"
+#line 497 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(RETURNK);
         (yyval.node)->child[0] = (yyvsp[-1].node);    /* expressão */
@@ -1650,7 +1650,7 @@ yyreduce:
     break;
 
   case 39: /* expression: var ASSIGN expression  */
-#line 508 "cminusSintSem.y"
+#line 507 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar var_type = (yyvsp[-2].node) ? (yyvsp[-2].node)->type : TYPE_ERROR;
@@ -1676,13 +1676,13 @@ yyreduce:
     break;
 
   case 40: /* expression: simple_expression  */
-#line 529 "cminusSintSem.y"
+#line 528 "cminusSintSem.y"
                         { (yyval.node) = (yyvsp[0].node); }
 #line 1682 "cminus.tab.c"
     break;
 
   case 41: /* var: ID  */
-#line 535 "cminusSintSem.y"
+#line 534 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[0].id));
         TipoVar tipo = TYPE_ERROR;
@@ -1714,7 +1714,7 @@ yyreduce:
     break;
 
   case 42: /* var: ID LBRACK expression RBRACK  */
-#line 563 "cminusSintSem.y"
+#line 562 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[-3].id));
         TipoVar tipo = TYPE_ERROR;
@@ -1746,7 +1746,7 @@ yyreduce:
     break;
 
   case 43: /* simple_expression: additive_expression relop additive_expression  */
-#line 595 "cminusSintSem.y"
+#line 594 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[-2].node) ? (yyvsp[-2].node)->type : TYPE_ERROR;
@@ -1765,49 +1765,49 @@ yyreduce:
     break;
 
   case 44: /* simple_expression: additive_expression  */
-#line 609 "cminusSintSem.y"
+#line 608 "cminusSintSem.y"
                           { (yyval.node) = (yyvsp[0].node); }
 #line 1771 "cminus.tab.c"
     break;
 
   case 45: /* relop: LE  */
-#line 613 "cminusSintSem.y"
+#line 612 "cminusSintSem.y"
            { (yyval.ival) = LE; }
 #line 1777 "cminus.tab.c"
     break;
 
   case 46: /* relop: LT  */
-#line 614 "cminusSintSem.y"
+#line 613 "cminusSintSem.y"
            { (yyval.ival) = LT; }
 #line 1783 "cminus.tab.c"
     break;
 
   case 47: /* relop: GT  */
-#line 615 "cminusSintSem.y"
+#line 614 "cminusSintSem.y"
            { (yyval.ival) = GT; }
 #line 1789 "cminus.tab.c"
     break;
 
   case 48: /* relop: GE  */
-#line 616 "cminusSintSem.y"
+#line 615 "cminusSintSem.y"
            { (yyval.ival) = GE; }
 #line 1795 "cminus.tab.c"
     break;
 
   case 49: /* relop: EQ  */
-#line 617 "cminusSintSem.y"
+#line 616 "cminusSintSem.y"
            { (yyval.ival) = EQ; }
 #line 1801 "cminus.tab.c"
     break;
 
   case 50: /* relop: NE  */
-#line 618 "cminusSintSem.y"
+#line 617 "cminusSintSem.y"
            { (yyval.ival) = NE; }
 #line 1807 "cminus.tab.c"
     break;
 
   case 51: /* additive_expression: additive_expression addop term  */
-#line 624 "cminusSintSem.y"
+#line 623 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[-2].node) ? (yyvsp[-2].node)->type : TYPE_ERROR;
@@ -1826,25 +1826,25 @@ yyreduce:
     break;
 
   case 52: /* additive_expression: term  */
-#line 638 "cminusSintSem.y"
+#line 637 "cminusSintSem.y"
            { (yyval.node) = (yyvsp[0].node); }
 #line 1832 "cminus.tab.c"
     break;
 
   case 53: /* addop: PLUS  */
-#line 642 "cminusSintSem.y"
+#line 641 "cminusSintSem.y"
              { (yyval.ival) = PLUS; }
 #line 1838 "cminus.tab.c"
     break;
 
   case 54: /* addop: MINUS  */
-#line 643 "cminusSintSem.y"
+#line 642 "cminusSintSem.y"
               { (yyval.ival) = MINUS; }
 #line 1844 "cminus.tab.c"
     break;
 
   case 55: /* term: term mulop factor  */
-#line 649 "cminusSintSem.y"
+#line 648 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[-2].node) ? (yyvsp[-2].node)->type : TYPE_ERROR;
@@ -1863,43 +1863,43 @@ yyreduce:
     break;
 
   case 56: /* term: factor  */
-#line 663 "cminusSintSem.y"
+#line 662 "cminusSintSem.y"
              { (yyval.node) = (yyvsp[0].node); }
 #line 1869 "cminus.tab.c"
     break;
 
   case 57: /* mulop: TIMES  */
-#line 667 "cminusSintSem.y"
+#line 666 "cminusSintSem.y"
               { (yyval.ival) = TIMES; }
 #line 1875 "cminus.tab.c"
     break;
 
   case 58: /* mulop: DIVIDE  */
-#line 668 "cminusSintSem.y"
+#line 667 "cminusSintSem.y"
                { (yyval.ival) = DIVIDE; }
 #line 1881 "cminus.tab.c"
     break;
 
   case 59: /* factor: LPAREN expression RPAREN  */
-#line 673 "cminusSintSem.y"
+#line 672 "cminusSintSem.y"
                              { (yyval.node) = (yyvsp[-1].node); }
 #line 1887 "cminus.tab.c"
     break;
 
   case 60: /* factor: var  */
-#line 674 "cminusSintSem.y"
+#line 673 "cminusSintSem.y"
           { (yyval.node) = (yyvsp[0].node); }
 #line 1893 "cminus.tab.c"
     break;
 
   case 61: /* factor: call  */
-#line 675 "cminusSintSem.y"
+#line 674 "cminusSintSem.y"
            { (yyval.node) = (yyvsp[0].node); }
 #line 1899 "cminus.tab.c"
     break;
 
   case 62: /* factor: NUM  */
-#line 677 "cminusSintSem.y"
+#line 676 "cminusSintSem.y"
     { 
         (yyval.node) = newExpNode(CONSTK);
         (yyval.node)->kind.var.attr.val = (yyvsp[0].ival);
@@ -1910,7 +1910,7 @@ yyreduce:
     break;
 
   case 63: /* call: ID LPAREN args RPAREN  */
-#line 688 "cminusSintSem.y"
+#line 687 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[-3].id));
         TipoVar tipo = TYPE_INT;  /* padrão */
@@ -1937,19 +1937,19 @@ yyreduce:
     break;
 
   case 64: /* args: arg_list  */
-#line 714 "cminusSintSem.y"
+#line 713 "cminusSintSem.y"
              { (yyval.node) = (yyvsp[0].node); }
 #line 1943 "cminus.tab.c"
     break;
 
   case 65: /* args: %empty  */
-#line 715 "cminusSintSem.y"
+#line 714 "cminusSintSem.y"
                   { (yyval.node) = NULL; }
 #line 1949 "cminus.tab.c"
     break;
 
   case 66: /* arg_list: arg_list COMMA expression  */
-#line 721 "cminusSintSem.y"
+#line 720 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[-2].node);
         if (t != NULL) {
@@ -1965,7 +1965,7 @@ yyreduce:
     break;
 
   case 67: /* arg_list: expression  */
-#line 732 "cminusSintSem.y"
+#line 731 "cminusSintSem.y"
                  { (yyval.node) = (yyvsp[0].node); }
 #line 1971 "cminus.tab.c"
     break;
@@ -2164,12 +2164,12 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 735 "cminusSintSem.y"
+#line 734 "cminusSintSem.y"
 
 
 /* ===== FUNÇÕES PARA GRAPHVIZ ===== */
 
-/* Estrutura par contexto de impressão DOT */
+/* Estrutura para contexto de impressão DOT */
 typedef struct {
     int node_counter;
     FILE *fp;
@@ -2197,17 +2197,6 @@ static char *escape_label(const char *str) {
     return escaped;
 }
 
-/* Função para obter nome do tipo */
-static const char* get_type_name(TipoVar type) {
-    switch (type) {
-        case TYPE_INT: return "int";
-        case TYPE_VOID: return "void";
-        case TYPE_INT_ARRAY: return "int[]";
-        case TYPE_ERROR: return "ERROR";
-        default: return "unknown";
-    }
-}
-
 /* Função para obter símbolo do operador */
 static const char* get_op_symbol(int op) {
     switch (op) {
@@ -2226,7 +2215,7 @@ static const char* get_op_symbol(int op) {
 }
 
 /* Função recursiva para gerar GraphViz DOT */
-static int printTreeDOT_recursive(DotContext *ctx, TreeNode *tree, int parent_id) {
+static int printTreeDOT_simplified(DotContext *ctx, TreeNode *tree, int parent_id) {
     if (tree == NULL) return -1;
     
     int current_id = ctx->node_counter++;
@@ -2238,136 +2227,150 @@ static int printTreeDOT_recursive(DotContext *ctx, TreeNode *tree, int parent_id
     char label[256] = "";
     
     if (tree->nodekind == STMTK) {
-        color = "lightgreen";
-        switch (tree->kind.stmt) {
+        switch(tree->kind.stmt) {
             case INTEGERK:
-                if (tree->child[0] && tree->child[0]->nodekind == VARK) {
-                    if (tree->child[0]->kind.var.varKind == KIND_FUNC) {
-                        snprintf(label, sizeof(label), "Function\\n[int]");
-                        color = "gold";
-                    } else if (tree->child[0]->kind.var.varKind == KIND_ARRAY) {
-                        snprintf(label, sizeof(label), "Array Decl\\n[int]");
-                    } else {
-                        snprintf(label, sizeof(label), "Var Decl\\n[int]");
-                    }
-                } else {
-                    snprintf(label, sizeof(label), "Type: int");
-                }
-                break;
+
             case VOIDK:
-                if (tree->child[0] && tree->child[0]->nodekind == VARK && 
-                    tree->child[0]->kind.var.varKind == KIND_FUNC) {
-                    snprintf(label, sizeof(label), "Function\\n[void]");
-                    color = "gold";
-                } else {
-                    snprintf(label, sizeof(label), "Type: void");
+                /* Pula nós de tipo */
+                if (tree->child[0]) {
+                    printTreeDOT_simplified(ctx, tree->child[0], parent_id);
                 }
-                break;
-            case IFK: 
-                snprintf(label, sizeof(label), "IF"); 
+
+                if (tree->sibling) {
+                    printTreeDOT_simplified(ctx, tree->sibling, parent_id);
+                }
+                
+                return -1; /* Indica que pulou */
+
+            case IFK:
+                snprintf(label, sizeof(label), "IF");
                 color = "orange";
+                shape = "diamond";
                 break;
-            case WHILEK: 
-                snprintf(label, sizeof(label), "WHILE"); 
+
+            case WHILEK:
+                snprintf(label, sizeof(label), "WHILE");
                 color = "orange";
+                shape = "diamond";
                 break;
-            case RETURNK: 
-                snprintf(label, sizeof(label), "RETURN"); 
+
+            case RETURNK:
+                snprintf(label, sizeof(label), "RETURN");
                 color = "pink";
                 break;
-            case COMPK: 
-                snprintf(label, sizeof(label), "Compound\\nStatement"); 
-                color = "lightcyan";
-                break;
+
+            case COMPK:
+                /* Pula compound statements, processa filhos e irmãos */
+                for (int i = 0; i < MAXCHILDREN; i++) {
+                    if (tree->child[i] != NULL) {
+                        printTreeDOT_simplified(ctx, tree->child[i], parent_id);
+                    }
+                }
+
+                /* Processa irmãos mesmo pulando o nó */
+                if (tree->sibling) {
+                    printTreeDOT_simplified(ctx, tree->sibling, parent_id);
+                }
+
+                return -1; /* Indica que pulou */
         }
-    } else if (tree->nodekind == VARK) {
-        color = "lightyellow";
+    } 
+    else if (tree->nodekind == VARK) {
         char *esc_name = escape_label(tree->kind.var.attr.name);
         
         if (tree->kind.var.varKind == KIND_FUNC) {
-            snprintf(label, sizeof(label), "%s\\n(function)", esc_name);
-        } else if (tree->kind.var.varKind == KIND_ARRAY) {
+            snprintf(label, sizeof(label), "Function\\n%s", esc_name);
+            color = "gold";
+            shape = "ellipse";
+        } 
+        else if (tree->kind.var.varKind == KIND_ARRAY) {
             if (tree->kind.var.acesso == DECLK) {
-                snprintf(label, sizeof(label), "%s\\n(array decl)", esc_name);
-            } else {
-                snprintf(label, sizeof(label), "%s\\n(array access)", esc_name);
+                snprintf(label, sizeof(label), "Array\\n%s", esc_name);
+                color = "lightgreen";
+            } 
+            else {
+                snprintf(label, sizeof(label), "%s[]", esc_name);
+                color = "lightyellow";
             }
-        } else {
+        } 
+        else {
             if (tree->kind.var.acesso == DECLK) {
-                snprintf(label, sizeof(label), "%s\\n(declaration)", esc_name);
-            } else {
-                snprintf(label, sizeof(label), "%s\\n(variable)", esc_name);
+                snprintf(label, sizeof(label), "Var\\n%s", esc_name);
+                color = "lightgreen";
+            } 
+            else {
+                snprintf(label, sizeof(label), "%s", esc_name);
+                color = "lightyellow";
             }
         }
+
         free(esc_name);
-    } else if (tree->nodekind == EXPK) {
-        color = "lavender";
+    } 
+    else if (tree->nodekind == EXPK) {
         switch (tree->kind.exp) {
             case OPK:
-                snprintf(label, sizeof(label), "Op: %s", get_op_symbol(tree->op));
-                color = "plum";
-                shape = "ellipse";
+                snprintf(label, sizeof(label), "%s", get_op_symbol(tree->op));
+                color = "lavender";
+                shape = "circle";
                 break;
+
             case CONSTK:
-                snprintf(label, sizeof(label), "Const\\n%d", tree->kind.var.attr.val);
+                snprintf(label, sizeof(label), "%d", tree->kind.var.attr.val);
                 color = "lightpink";
-                shape = "ellipse";
+                shape = "circle";
                 break;
+
             case IDK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                snprintf(label, sizeof(label), "ID: %s", esc_name);
+                snprintf(label, sizeof(label), "%s", esc_name);
                 free(esc_name);
-                break;
+                color = "lightyellow";
             }
+            break;
+
             case ASSIGNK:
-                snprintf(label, sizeof(label), "Assign\\n=");
+                snprintf(label, sizeof(label), "=");
                 color = "khaki";
+                shape = "circle";
                 break;
+
             case CALLK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                snprintf(label, sizeof(label), "Call\\n%s()", esc_name);
+                snprintf(label, sizeof(label), "%s()", esc_name);
                 free(esc_name);
                 color = "peachpuff";
-                break;
             }
+            break;
+
             case VECTORK: {
                 char *esc_name = escape_label(tree->kind.var.attr.name);
-                if (tree->child[0]) {
-                    snprintf(label, sizeof(label), "Vector\\n%s[..]", esc_name);
-                } else {
-                    snprintf(label, sizeof(label), "Vector\\n%s", esc_name);
-                }
+                snprintf(label, sizeof(label), "%s[]", esc_name);
                 free(esc_name);
-                break;
+                color = "lightcyan";
             }
+            break;
         }
     }
+
+    fprintf(fp, "  node%d [label=\"%s\", shape=%s, style=\"filled\", fillcolor=%s];\n", current_id, label, shape, color);
     
-    /* Cria o nó */
-    fprintf(fp, "  node%d [label=\"%s\", shape=%s, style=\"filled\", fillcolor=%s];\n",
-            current_id, label, shape, color);
-    
-    /* Liga ao pai se existir */
+    /* Liga ao pai */
     if (parent_id >= 0) {
         fprintf(fp, "  node%d -> node%d;\n", parent_id, current_id);
     }
-    
+
     /* Processa filhos */
     for (int i = 0; i < MAXCHILDREN; i++) {
         if (tree->child[i] != NULL) {
-            printTreeDOT_recursive(ctx, tree->child[i], current_id);
+            printTreeDOT_simplified(ctx, tree->child[i], current_id);
         }
     }
     
     /* Processa irmãos */
     if (tree->sibling != NULL) {
-        int sibling_id = printTreeDOT_recursive(ctx, tree->sibling, parent_id);
-        if (sibling_id >= 0) {
-            fprintf(fp, "  node%d -> node%d [style=dashed, color=gray, constraint=false];\n",
-                    current_id, sibling_id);
-        }
+        printTreeDOT_simplified(ctx, tree->sibling, parent_id);
     }
-    
+
     return current_id;
 }
 
@@ -2385,22 +2388,121 @@ void printTreeDOT(TreeNode *tree, const char *filename) {
     /* Cabeçalho */
     fprintf(fp, "digraph AST {\n");
     fprintf(fp, "  rankdir=TB;\n");
-    fprintf(fp, "  node [fontname=\"Arial\", fontsize=12];\n");
-    fprintf(fp, "  edge [fontname=\"Arial\", fontsize=10];\n");
+    fprintf(fp, "  node [fontname=\"Arial\", fontsize=14, fontcolor=\"#333333\"];\n");
+    fprintf(fp, "  edge [fontname=\"Arial\", fontsize=10, color=\"#666666\"];\n");
+    fprintf(fp, "  bgcolor=\"white\";\n");
+    fprintf(fp, "  \n");
+    fprintf(fp, "  // AST Simplificada (Abstract Syntax Tree)\n");
     fprintf(fp, "  \n");
     
     /* Gera a árvore */
-    printTreeDOT_recursive(&ctx, tree, -1);
+    printTreeDOT_simplified(&ctx, tree, -1);
     
     /* Rodapé */
     fprintf(fp, "}\n");
-    
     fclose(fp);
+
     printf("\nArquivo GraphViz gerado: %s\n", filename);
     printf("Para gerar a imagem, execute:\n");
-    printf("  dot -Tpng %s -o ast.png\n", filename);
-    printf("  ou\n");
-    printf("  dot -Tsvg %s -o ast.svg\n", filename);
+    printf("   dot -Tpng %s -o ast.png\n", filename);
+    printf("   dot -Tsvg %s -o ast.svg (recomendado)\n\n", filename);
+}
+
+/* Impressão textual (opcional) */
+void printTreeSimplified(TreeNode *tree, int indent) {
+    if (tree == NULL) return;
+
+    for (int i = 0; i < indent; i++) printf(" ");
+
+    if (tree->nodekind == STMTK) {
+        switch (tree->kind.stmt) {
+            case INTEGERK:
+
+            case VOIDK:
+                /* Pula nós de tipo */
+                if (tree->child[0]) {
+                    printTreeSimplified(tree->child[0], indent);
+                    printTreeSimplified(tree->sibling, indent);
+                    return;
+                }
+                break;
+                
+            case IFK: 
+                printf("IF\n"); 
+                break;
+
+            case WHILEK: 
+                printf("WHILE\n"); 
+                break;
+
+            case RETURNK: 
+                printf("RETURN\n"); 
+                break;
+
+            case COMPK:
+                /* Pula compound, vai direto aos filhos */
+                for (int i = 0; i < MAXCHILDREN; i++) {
+                    printTreeSimplified(tree->child[i], indent);
+                }
+                printTreeSimplified(tree->sibling, indent);
+                return;
+        }
+    } 
+    else if (tree->nodekind == VARK) {
+        if (tree->kind.var.varKind == KIND_FUNC) {
+            printf("Function: %s\n", tree->kind.var.attr.name);
+        } 
+        else if (tree->kind.var.varKind == KIND_ARRAY) {
+            if (tree->kind.var.acesso == DECLK) {
+                printf("Array: %s\n", tree->kind.var.attr.name);
+            } 
+            else {
+                printf("%s[]\n", tree->kind.var.attr.name);
+            }
+        } 
+        else {
+            if (tree->kind.var.acesso == DECLK) {
+                printf("Var: %s\n", tree->kind.var.attr.name);
+            } 
+            else {
+                printf("%s\n", tree->kind.var.attr.name);
+            }
+        }
+    } 
+    else if (tree->nodekind == EXPK) {
+        switch (tree->kind.exp) {
+            case OPK:
+                printf("%s\n", get_op_symbol(tree->op));
+                break;
+
+            case CONSTK: 
+                printf("%d\n", tree->kind.var.attr.val); 
+                break;
+
+            case IDK: 
+                printf("%s\n", tree->kind.var.attr.name); 
+                break;
+
+            case ASSIGNK: 
+                printf("=\n"); 
+                break;
+
+            case CALLK: 
+                printf("%s()\n", tree->kind.var.attr.name); 
+                break;
+
+            case VECTORK: 
+                printf("%s[]\n", tree->kind.var.attr.name);
+                break;
+        }
+    }
+    
+    /* Imprime filhos */
+    for (int i = 0; i < MAXCHILDREN; i++)
+        printTreeSimplified(tree->child[i], indent + 1);
+    
+    /* Imprime irmãos */
+    printTreeSimplified(tree->sibling, indent);
 }
 
 /* ===== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ===== */
