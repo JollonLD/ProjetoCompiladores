@@ -2,7 +2,7 @@
 
 int main(void) {
     int x;
-    void y;        /* ERRO: variável não pode ser void */
+    void @y;        /* ERRO: variável não pode ser void */
     int arr[10];
 
     x = 5;

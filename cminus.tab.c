@@ -74,7 +74,7 @@
     #include <stdlib.h>
     #include <string.h>
     #include "parser_context.h"
-    #include "cgen.h"
+    #include "code_generator.h"
 
     extern int yylex(void);
     /* extern int yyparse(void); */
