@@ -1549,9 +1549,6 @@ int main(int argc, char **argv) {
 }
 
 void yyerror(ParserContext *ctx, const char *s) {
-    /* DEBUG: Mostra a mensagem original do Bison */
-    /* fprintf(stderr, "DEBUG BISON: %s\n", s); */
-
     /* Processa a mensagem de erro do Bison para extrair informações úteis */
     if (strstr(s, "unexpected") != NULL) {
         char *msg = strdup(s);
@@ -1561,10 +1558,18 @@ void yyerror(ParserContext *ctx, const char *s) {
         if (unexpected_pos && expecting_pos) {
             /* Formato: "syntax error, unexpected TOKEN, expecting TOKEN" */
             char unexpected_raw[64] = "";
-            char expected_raw[256] = "";
+            char expected_raw[512] = "";
 
             sscanf(unexpected_pos, "unexpected %[^,]", unexpected_raw);
-            sscanf(expecting_pos, "expecting %[^\n]", expected_raw);
+
+            /* Extrai tudo após "expecting " até o final ou vírgula */
+            char *exp_start = expecting_pos + strlen("expecting ");
+            int len = 0;
+            while (exp_start[len] && exp_start[len] != '\n' && len < 511) {
+                expected_raw[len] = exp_start[len];
+                len++;
+            }
+            expected_raw[len] = '\0';
 
             /* Traduz o token inesperado */
             const char *unexpected_translated = translate_token(unexpected_raw);
@@ -1573,22 +1578,40 @@ void yyerror(ParserContext *ctx, const char *s) {
             if (strstr(unexpected_raw, "$end") != NULL || strcmp(unexpected_raw, "$end") == 0) {
                 /* Fim de arquivo inesperado - geralmente significa algo não foi fechado */
                 fprintf(stderr, "ERRO SINTATICO: fim de arquivo inesperado, possivelmente falta fechar '}', ')' ou ']' - LINHA: %d\n", yylineno);
-            } else {
+            }
+            /* Caso especial: ELSE inesperado geralmente significa else sem if */
+            else if (strcmp(unexpected_raw, "ELSE") == 0) {
+                fprintf(stderr, "ERRO SINTATICO: 'else' sem 'if' correspondente - LINHA: %d\n", yylineno);
+            }
+            /* Caso especial: quando Bison reporta apenas LBRACE mas o contexto é mais amplo */
+            else if (strcmp(expected_raw, "LBRACE") == 0 &&
+                     (strcmp(unexpected_raw, "RBRACE") == 0 ||
+                      strcmp(unexpected_raw, "ELSE") == 0 ||
+                      strcmp(unexpected_raw, "RETURN") == 0)) {
+                /* Contexto sugere que estamos esperando um statement */
+                fprintf(stderr, "ERRO SINTATICO: token inesperado %s, esperado um comando (if, while, return, identificador, '{', ou ';') - LINHA: %d\n",
+                        unexpected_translated, yylineno);
+            }
+            else {
                 /* Processa múltiplos tokens esperados (separados por "or") */
-                char expected_translated[512] = "";
+                char expected_translated[1024] = "";
                 char *token_copy = strdup(expected_raw);
-                char *token = strtok(token_copy, " ");
+                char *saveptr = NULL;
+                char *token = strtok_r(token_copy, " ", &saveptr);
                 int first = 1;
+                int count = 0;
 
-                while (token != NULL) {
+                while (token != NULL && count < 20) {
                     if (strcmp(token, "or") != 0) {
                         if (!first) {
                             strcat(expected_translated, " ou ");
                         }
-                        strcat(expected_translated, translate_token(token));
+                        const char *translated = translate_token(token);
+                        strcat(expected_translated, translated);
                         first = 0;
+                        count++;
                     }
-                    token = strtok(NULL, " ");
+                    token = strtok_r(NULL, " ", &saveptr);
                 }
 
                 fprintf(stderr, "ERRO SINTATICO: token inesperado %s, esperado %s - LINHA: %d\n",
