@@ -19,7 +19,3 @@ int main(void) {
 
     return x;
 }
-
-void soma(void a, void b) {  /* ERRO: parâmetros não podem ser void */
-    return a + b;
-}

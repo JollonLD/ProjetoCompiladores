@@ -9,11 +9,46 @@
     /* extern int yyparse(void); */
     extern FILE *yyin;
     extern int yylineno;
+    extern char *yytext;
 
     void yyerror(ParserContext *ctx, const char *s);
+
+    /* Traduz nomes de tokens para mensagens amigáveis */
+    const char* translate_token(const char *token) {
+        if (strcmp(token, "SEMI") == 0) return "';'";
+        if (strcmp(token, "COMMA") == 0) return "','";
+        if (strcmp(token, "LPAREN") == 0) return "'('";
+        if (strcmp(token, "RPAREN") == 0) return "')'";
+        if (strcmp(token, "LBRACK") == 0) return "'['";
+        if (strcmp(token, "RBRACK") == 0) return "']'";
+        if (strcmp(token, "LBRACE") == 0) return "'{'";
+        if (strcmp(token, "RBRACE") == 0) return "'}'";
+        if (strcmp(token, "ASSIGN") == 0) return "'='";
+        if (strcmp(token, "PLUS") == 0) return "'+'";
+        if (strcmp(token, "MINUS") == 0) return "'-'";
+        if (strcmp(token, "TIMES") == 0) return "'*'";
+        if (strcmp(token, "DIVIDE") == 0) return "'/'";
+        if (strcmp(token, "LT") == 0) return "'<'";
+        if (strcmp(token, "LE") == 0) return "'<='";
+        if (strcmp(token, "GT") == 0) return "'>'";
+        if (strcmp(token, "GE") == 0) return "'>='";
+        if (strcmp(token, "EQ") == 0) return "'=='";
+        if (strcmp(token, "NE") == 0) return "'!='";
+        if (strcmp(token, "IF") == 0) return "'if'";
+        if (strcmp(token, "ELSE") == 0) return "'else'";
+        if (strcmp(token, "WHILE") == 0) return "'while'";
+        if (strcmp(token, "RETURN") == 0) return "'return'";
+        if (strcmp(token, "INT") == 0) return "'int'";
+        if (strcmp(token, "VOID") == 0) return "'void'";
+        if (strcmp(token, "ID") == 0) return "identificador";
+        if (strcmp(token, "NUM") == 0) return "numero";
+        if (strstr(token, "$end") != NULL) return "fim de arquivo";
+        return token;
+    }
 %}
 
 %expect 1
+%error-verbose
 
 %parse-param {ParserContext *ctx}
 
@@ -211,8 +246,8 @@ var_declaration :
     {
         /* Análise semântica */
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: array '%s' nao pode ser void\n", 
-                    yylineno, $2);
+            fprintf(stderr, "ERRO SEMANTICO: array '%s' nao pode ser void - LINHA: %d\n",
+                    $2, yylineno);
             ctx->has_errors = 1;
         } else {
             insert_array_ctx(ctx, $2, $4, yylineno);
@@ -316,8 +351,8 @@ param :
     {
         /* Análise semântica */
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro '%s' nao pode ser void\n",
-                    yylineno, $2);
+            fprintf(stderr, "ERRO SEMANTICO: parametro '%s' nao pode ser void - LINHA: %d\n",
+                    $2, yylineno);
             ctx->has_errors = 1;
         } else {
             insert_symbol_ctx(ctx, $2, $1, KIND_VAR, yylineno);
@@ -342,8 +377,8 @@ param :
     {
         /* Análise semântica */
         if ($1 == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro array '%s' nao pode ser void\n",
-                    yylineno, $2);
+            fprintf(stderr, "ERRO SEMANTICO: parametro array '%s' nao pode ser void - LINHA: %d\n",
+                    $2, yylineno);
             ctx->has_errors = 1;
         } else {
             insert_symbol_ctx(ctx, $2, TYPE_INT_ARRAY, KIND_ARRAY, yylineno);
@@ -440,10 +475,10 @@ selection_stmt :
     {
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do IF deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
-        
+
         /* Construção da AST */
         $$ = newStmtNode(IFK);
         $$->child[0] = $3;    /* condição */
@@ -455,10 +490,10 @@ selection_stmt :
     {
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do IF deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
-        
+
         /* Construção da AST */
         $$ = newStmtNode(IFK);
         $$->child[0] = $3;    /* condição */
@@ -474,7 +509,7 @@ iteration_stmt :
     {
         /* Análise semântica */
         if ($3 && $3->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do WHILE deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do WHILE deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
         
@@ -510,12 +545,12 @@ expression :
         TipoVar var_type = $1 ? $1->type : TYPE_ERROR;
         TipoVar exp_type = $3 ? $3->type : TYPE_ERROR;
         
-        if ($1 && $1->nodekind == VARK && $1->kind.var.varKind == KIND_ARRAY && 
+        if ($1 && $1->nodekind == VARK && $1->kind.var.varKind == KIND_ARRAY &&
             $1->child[0] == NULL) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: nao e possivel atribuir a array completo\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: nao e possivel atribuir a array completo - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         } else if (var_type != exp_type && exp_type != TYPE_ERROR && var_type != TYPE_ERROR) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: tipos incompativeis na atribuicao\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: tipos incompativeis na atribuicao - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
         
@@ -538,7 +573,7 @@ var :
         TipoSimbolo kind = KIND_VAR;
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: variavel '%s' nao declarada - LINHA: %d\n", $1, yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = s->tipo;
@@ -565,13 +600,13 @@ var :
         TipoVar tipo = TYPE_ERROR;
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: variavel '%s' nao declarada - LINHA: %d\n", $1, yylineno);
             ctx->has_errors = 1;
         } else if (s->kind != KIND_ARRAY) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e um array\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: '%s' nao e um array - LINHA: %d\n", $1, yylineno);
             ctx->has_errors = 1;
         } else if ($3 && $3->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: indice de array deve ser inteiro\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: indice de array deve ser inteiro - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = TYPE_INT;
@@ -690,10 +725,10 @@ call :
         TipoVar tipo = TYPE_INT;  /* padrão */
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: funcao '%s' nao declarada\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: funcao '%s' nao declarada - LINHA: %d\n", $1, yylineno);
             ctx->has_errors = 1;
         } else if (s->kind != KIND_FUNC) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e uma funcao\n", yylineno, $1);
+            fprintf(stderr, "ERRO SEMANTICO: '%s' nao e uma funcao - LINHA: %d\n", $1, yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = s->tipo;  /* tipo de retorno da função */
@@ -1118,7 +1153,7 @@ void insert_symbol_ctx(ParserContext *ctx, const char *nome, TipoVar tipo, TipoS
     }
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -1141,7 +1176,7 @@ void insert_array_ctx(ParserContext *ctx, const char *nome, int tamanho, int lin
     if (!ctx->escopo_atual) return;
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -1162,7 +1197,7 @@ void insert_function_ctx(ParserContext *ctx, const char *nome, TipoVar tipo_reto
     if (!ctx->escopo_atual) return;
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -1185,13 +1220,13 @@ TipoVar check_expression_type_ctx(ParserContext *ctx, const char *op, TipoVar t1
     }
     
     if (t1 == TYPE_VOID || t2 == TYPE_VOID) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s com tipo void\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: operacao %s com tipo void - LINHA: %d\n", op, linha);
         ctx->has_errors = 1;
         return TYPE_ERROR;
     }
-    
+
     if (t1 != TYPE_INT || t2 != TYPE_INT) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s requer operandos inteiros\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: operacao %s requer operandos inteiros - LINHA: %d\n", op, linha);
         ctx->has_errors = 1;
         return TYPE_ERROR;
     }
@@ -1492,8 +1527,8 @@ int main(int argc, char **argv) {
         printf("================================================================================\n");
         printf("                      ARVORE SINTATICA ABSTRATA (AST)\n");
         printf("================================================================================\n");
-        printTree(ctx->ast_root, 0);
-        printf("================================================================================\n");
+        /* printTree(ctx->ast_root, 0);
+        printf("================================================================================\n"); */
 
         printTreeDOT(ctx->ast_root, "ast.dot");
 
@@ -1514,6 +1549,68 @@ int main(int argc, char **argv) {
 }
 
 void yyerror(ParserContext *ctx, const char *s) {
-    fprintf(stderr, "Erro sintatico linha %d: %s\n", yylineno, s);
+    /* DEBUG: Mostra a mensagem original do Bison */
+    /* fprintf(stderr, "DEBUG BISON: %s\n", s); */
+
+    /* Processa a mensagem de erro do Bison para extrair informações úteis */
+    if (strstr(s, "unexpected") != NULL) {
+        char *msg = strdup(s);
+        char *unexpected_pos = strstr(msg, "unexpected ");
+        char *expecting_pos = strstr(msg, "expecting ");
+
+        if (unexpected_pos && expecting_pos) {
+            /* Formato: "syntax error, unexpected TOKEN, expecting TOKEN" */
+            char unexpected_raw[64] = "";
+            char expected_raw[256] = "";
+
+            sscanf(unexpected_pos, "unexpected %[^,]", unexpected_raw);
+            sscanf(expecting_pos, "expecting %[^\n]", expected_raw);
+
+            /* Traduz o token inesperado */
+            const char *unexpected_translated = translate_token(unexpected_raw);
+
+            /* Detecta casos especiais */
+            if (strstr(unexpected_raw, "$end") != NULL || strcmp(unexpected_raw, "$end") == 0) {
+                /* Fim de arquivo inesperado - geralmente significa algo não foi fechado */
+                fprintf(stderr, "ERRO SINTATICO: fim de arquivo inesperado, possivelmente falta fechar '}', ')' ou ']' - LINHA: %d\n", yylineno);
+            } else {
+                /* Processa múltiplos tokens esperados (separados por "or") */
+                char expected_translated[512] = "";
+                char *token_copy = strdup(expected_raw);
+                char *token = strtok(token_copy, " ");
+                int first = 1;
+
+                while (token != NULL) {
+                    if (strcmp(token, "or") != 0) {
+                        if (!first) {
+                            strcat(expected_translated, " ou ");
+                        }
+                        strcat(expected_translated, translate_token(token));
+                        first = 0;
+                    }
+                    token = strtok(NULL, " ");
+                }
+
+                fprintf(stderr, "ERRO SINTATICO: token inesperado %s, esperado %s - LINHA: %d\n",
+                        unexpected_translated, expected_translated, yylineno);
+                free(token_copy);
+            }
+        } else if (unexpected_pos) {
+            /* Apenas token inesperado */
+            char unexpected_raw[64] = "";
+            sscanf(unexpected_pos, "unexpected %s", unexpected_raw);
+            const char *unexpected_translated = translate_token(unexpected_raw);
+            fprintf(stderr, "ERRO SINTATICO: token inesperado %s - LINHA: %d\n",
+                    unexpected_translated, yylineno);
+        } else {
+            fprintf(stderr, "ERRO SINTATICO: %s - LINHA: %d\n", s, yylineno);
+        }
+
+        free(msg);
+    } else {
+        /* Mensagem genérica */
+        fprintf(stderr, "ERRO SINTATICO: %s - LINHA: %d\n", s, yylineno);
+    }
+
     ctx->has_errors = 1;
 }

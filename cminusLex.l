@@ -22,7 +22,7 @@
 <COMMENT>"*/"      { BEGIN(INITIAL); }
 <COMMENT>\n        ;
 <COMMENT>.         ;
-<COMMENT><<EOF>>   { fprintf(stderr, "Erro: comentário não fechado\n"); return 0; }
+<COMMENT><<EOF>>   { fprintf(stderr, "ERRO LEXICO: 'comentario nao fechado' - LINHA: %d\n", yylineno); return 0; }
 
 "//".*             ; /* comentários de linha única */
 
@@ -66,9 +66,8 @@
 "*"                { return TIMES; }
 "/"                { return DIVIDE; }
 
-.                  { 
-    fprintf(stderr, "Erro léxico na linha %d: caractere não reconhecido '%s'\n", 
-            yylineno, yytext); 
+.                  {
+    fprintf(stderr, "ERRO LEXICO:    caractere nao reconhecido: '%s' - LINHA: %d\n", yytext, yylineno);
 }
 
 %%
