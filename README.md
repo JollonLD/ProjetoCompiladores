@@ -7,6 +7,7 @@ Compilador para a linguagem C-Minus com análise léxica, sintática e semântic
 - GCC (compilador C)
 - Flex (analisador léxico)
 - Bison (analisador sintático)
+- GraphViz (opcional, para visualização da AST)
 
 ### Instalação no Windows
 
@@ -21,20 +22,20 @@ Você pode usar MinGW ou WSL:
 **WSL (recomendado):**
 ```bash
 sudo apt-get update
-sudo apt-get install gcc flex bison make
+sudo apt-get install gcc flex bison make graphviz
 ```
 
 ### Instalação no Linux/Mac
 
 ```bash
 # Ubuntu/Debian
-sudo apt-get install gcc flex bison make
+sudo apt-get install gcc flex bison make graphviz
 
 # Fedora
-sudo dnf install gcc flex bison make
+sudo dnf install gcc flex bison make graphviz
 
 # Mac
-brew install gcc flex bison make
+brew install gcc flex bison make graphviz
 ```
 
 ## Compilação
@@ -74,6 +75,56 @@ ou interativamente:
 # Digite o código e pressione Ctrl+D (Linux/Mac) ou Ctrl+Z (Windows)
 ```
 
+## Geração de Árvore Sintática Abstrata (AST)
+
+O compilador gera automaticamente uma **AST simplificada** no formato GraphViz para visualização da estrutura do programa.
+
+### Como funciona
+
+Quando se compila um programa sem erros, o compilador gera:
+
+1. **`ast.dot`** - Arquivo de descrição da árvore em formato GraphViz
+2. A AST é exibida no terminal
+
+### Gerando visualização gráfica
+
+Após compilar o programa, converte-se o arquivo `ast.dot` em imagem:
+```bash
+# PNG
+dot -Tpng ast.dot -o ast.png
+
+# SVG (vetorial) - RECOMENDADO
+dot -Tsvg ast.dot -o ast.svg
+```
+
+### Visualização online (sem instalar GraphViz)
+
+Se não tiver GraphViz instalado:
+
+1. Acesse: https://dreampuf.github.io/GraphVizOnline/
+2. Abra o arquivo `ast.dot` gerado
+3. Cole o conteúdo no site
+4. Visualize e baixe a imagem
+
+### Exemplo completo
+```bash
+# 1. Compile o programa
+./cminus test.cm
+
+# 2. Gere a visualização
+dot -Tpng ast.dot -o ast.png
+
+# 3. Abra a imagem
+# Linux
+xdg-open ast.png
+
+# Mac
+open ast.png
+
+# Windows WSL
+explorer.exe ast.png
+```
+
 ## Testes
 
 ### Teste com arquivo de exemplo
@@ -88,6 +139,12 @@ Este comando testa o compilador com o arquivo `test.cm`.
 
 ```bash
 make test-stdin
+```
+
+### Teste com geração de AST
+```bash
+# Compile e gere a AST automaticamente
+./cminus test.cm && dot -Tpng ast.dot -o ast.png && xdg-open ast.png
 ```
 
 ## Arquivos de Teste Incluídos
@@ -111,10 +168,18 @@ Para remover os arquivos gerados:
 make clean
 ```
 
+Para remover **tudo** (incluindo arquivos AST):
+```bash
+make clean
+rm -f ast.dot ast.png ast.svg ast.pdf
+```
+
 ## Estrutura do Projeto
 
 - `cminusLex.l` - Especificação do analisador léxico (Flex)
 - `cminusSintSem.y` - Especificação do analisador sintático/semântico (Bison)
+- `parser_context.h` - Contexto do parser
+- `parser_context.c` - Implementação do contexto
 - `Makefile` - Script de compilação
 - `test.cm` - Arquivo de teste correto
 - `test_errors.cm` - Arquivo de teste com erros
@@ -141,6 +206,12 @@ make clean
 - Verificação de tipos em expressões e atribuições
 - Escopo de variáveis (global e local)
 
+### Geração de AST
+- Árvore Sintática Abstrata simplificada
+- Remoção de nós intermediários redundantes
+- Visualização em formato GraphViz (DOT)
+- Exportação para PNG e SVG 
+
 ## Exemplos de Uso
 
 ### Programa Correto
@@ -165,6 +236,47 @@ Saída:
 ```
 Análise sintática concluída com sucesso!
 Análise semântica: Nenhum erro encontrado.
+
+================================================================================
+                      ÁRVORE SINTÁTICA ABSTRATA (AST)
+================================================================================
+Function: gcd
+  Var: u
+  Var: v
+  IF
+    =
+      v
+      0
+    RETURN
+      u
+    RETURN
+      gcd()
+        -
+          u
+          *
+            /
+              u
+              v
+            v
+Function: main
+  Var: x
+  Var: y
+  =
+    x
+    48
+  =
+    y
+    18
+  RETURN
+    gcd()
+      x
+      y
+================================================================================
+
+Arquivo GraphViz gerado: ast.dot
+Para gerar a imagem, execute:
+   dot -Tpng ast.dot -o ast.png
+   dot -Tsvg ast.dot -o ast.svg (recomendado)
 ```
 
 ### Programa com Erros

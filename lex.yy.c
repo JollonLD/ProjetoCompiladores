@@ -718,7 +718,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case YY_STATE_EOF(COMMENT):
 #line 25 "cminusLex.l"
-{ fprintf(stderr, "Erro: comentário não fechado\n"); return 0; }
+{ fprintf(stderr, "ERRO LEXICO: 'comentario nao fechado' - LINHA: %d\n", yylineno); return 0; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
@@ -869,17 +869,16 @@ YY_RULE_SETUP
 case 35:
 YY_RULE_SETUP
 #line 69 "cminusLex.l"
-{ 
-    fprintf(stderr, "Erro léxico na linha %d: caractere não reconhecido '%s'\n", 
-            yylineno, yytext); 
+{
+    fprintf(stderr, "ERRO LEXICO:    caractere nao reconhecido: '%s' - LINHA: %d\n", yytext, yylineno);
 }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 74 "cminusLex.l"
+#line 73 "cminusLex.l"
 ECHO;
 	YY_BREAK
-#line 883 "lex.yy.c"
+#line 882 "lex.yy.c"
 			case YY_STATE_EOF(INITIAL):
 				yyterminate();
 
@@ -1763,4 +1762,4 @@ int main()
 	return 0;
 	}
 #endif
-#line 74 "cminusLex.l"
+#line 73 "cminusLex.l"

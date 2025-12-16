@@ -74,18 +74,52 @@
     #include <stdlib.h>
     #include <string.h>
     #include "parser_context.h"
-    #include "cgen.h"
+    #include "code_generator.h"
 
     extern int yylex(void);
     /* extern int yyparse(void); */
     extern FILE *yyin;
     extern int yylineno;
+    extern char *yytext;
 
     void yyerror(ParserContext *ctx, const char *s);
 
+    /* Traduz nomes de tokens para mensagens amigáveis */
+    const char* translate_token(const char *token) {
+        if (strcmp(token, "SEMI") == 0) return "';'";
+        if (strcmp(token, "COMMA") == 0) return "','";
+        if (strcmp(token, "LPAREN") == 0) return "'('";
+        if (strcmp(token, "RPAREN") == 0) return "')'";
+        if (strcmp(token, "LBRACK") == 0) return "'['";
+        if (strcmp(token, "RBRACK") == 0) return "']'";
+        if (strcmp(token, "LBRACE") == 0) return "'{'";
+        if (strcmp(token, "RBRACE") == 0) return "'}'";
+        if (strcmp(token, "ASSIGN") == 0) return "'='";
+        if (strcmp(token, "PLUS") == 0) return "'+'";
+        if (strcmp(token, "MINUS") == 0) return "'-'";
+        if (strcmp(token, "TIMES") == 0) return "'*'";
+        if (strcmp(token, "DIVIDE") == 0) return "'/'";
+        if (strcmp(token, "LT") == 0) return "'<'";
+        if (strcmp(token, "LE") == 0) return "'<='";
+        if (strcmp(token, "GT") == 0) return "'>'";
+        if (strcmp(token, "GE") == 0) return "'>='";
+        if (strcmp(token, "EQ") == 0) return "'=='";
+        if (strcmp(token, "NE") == 0) return "'!='";
+        if (strcmp(token, "IF") == 0) return "'if'";
+        if (strcmp(token, "ELSE") == 0) return "'else'";
+        if (strcmp(token, "WHILE") == 0) return "'while'";
+        if (strcmp(token, "RETURN") == 0) return "'return'";
+        if (strcmp(token, "INT") == 0) return "'int'";
+        if (strcmp(token, "VOID") == 0) return "'void'";
+        if (strcmp(token, "ID") == 0) return "identificador";
+        if (strcmp(token, "NUM") == 0) return "numero";
+        if (strstr(token, "$end") != NULL) return "fim de arquivo";
+        return token;
+    }
+
 
 /* Line 189 of yacc.c  */
-#line 89 "cminus.tab.c"
+#line 123 "cminus.tab.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -97,7 +131,7 @@
 # undef YYERROR_VERBOSE
 # define YYERROR_VERBOSE 1
 #else
-# define YYERROR_VERBOSE 0
+# define YYERROR_VERBOSE 1
 #endif
 
 /* Enabling the token table.  */
@@ -108,7 +142,7 @@
 /* "%code requires" blocks.  */
 
 /* Line 209 of yacc.c  */
-#line 20 "cminusSintSem.y"
+#line 55 "cminusSintSem.y"
 
     #include "parser_context.h"
 
@@ -201,7 +235,7 @@
 
 
 /* Line 209 of yacc.c  */
-#line 205 "cminus.tab.c"
+#line 239 "cminus.tab.c"
 
 /* Tokens.  */
 #ifndef YYTOKENTYPE
@@ -246,7 +280,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 110 "cminusSintSem.y"
+#line 145 "cminusSintSem.y"
 
     int ival;
     char *id;
@@ -260,7 +294,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 264 "cminus.tab.c"
+#line 298 "cminus.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -272,7 +306,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 276 "cminus.tab.c"
+#line 310 "cminus.tab.c"
 
 #ifdef short
 # undef short
@@ -581,13 +615,13 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   154,   154,   168,   180,   185,   186,   191,   210,   245,
-     248,   256,   255,   291,   292,   293,   298,   310,   315,   341,
-     371,   381,   393,   398,   410,   415,   416,   417,   418,   419,
-     423,   423,   433,   434,   439,   454,   473,   491,   497,   507,
-     529,   534,   562,   594,   609,   613,   614,   615,   616,   617,
-     618,   623,   638,   642,   643,   648,   663,   667,   668,   673,
-     674,   675,   676,   687,   714,   715,   720,   732
+       0,   189,   189,   203,   215,   220,   221,   226,   245,   280,
+     283,   291,   290,   326,   327,   328,   333,   345,   350,   376,
+     406,   416,   428,   433,   445,   450,   451,   452,   453,   454,
+     458,   458,   468,   469,   474,   489,   508,   526,   532,   542,
+     564,   569,   597,   629,   644,   648,   649,   650,   651,   652,
+     653,   658,   673,   677,   678,   683,   698,   702,   703,   708,
+     709,   710,   711,   722,   749,   750,   755,   767
 };
 #endif
 
@@ -1566,7 +1600,7 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 155 "cminusSintSem.y"
+#line 190 "cminusSintSem.y"
     { 
         (yyval.node) = (yyvsp[(1) - (1)].node);
         ctx->ast_root = (yyval.node);
@@ -1581,7 +1615,7 @@ yyreduce:
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 169 "cminusSintSem.y"
+#line 204 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[(1) - (2)].node);
         if (t != NULL) {
@@ -1598,28 +1632,28 @@ yyreduce:
   case 4:
 
 /* Line 1455 of yacc.c  */
-#line 180 "cminusSintSem.y"
+#line 215 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 185 "cminusSintSem.y"
+#line 220 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 186 "cminusSintSem.y"
+#line 221 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 192 "cminusSintSem.y"
+#line 227 "cminusSintSem.y"
     {
         /* Análise semântica */
         insert_symbol_ctx(ctx, (yyvsp[(2) - (3)].id), (yyvsp[(1) - (3)].tipo), KIND_VAR, yylineno);
@@ -1643,12 +1677,12 @@ yyreduce:
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 211 "cminusSintSem.y"
+#line 246 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(1) - (6)].tipo) == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: array '%s' nao pode ser void\n", 
-                    yylineno, (yyvsp[(2) - (6)].id));
+            fprintf(stderr, "ERRO SEMANTICO: array '%s' nao pode ser void - LINHA: %d\n",
+                    (yyvsp[(2) - (6)].id), yylineno);
             ctx->has_errors = 1;
         } else {
             insert_array_ctx(ctx, (yyvsp[(2) - (6)].id), (yyvsp[(4) - (6)].ival), yylineno);
@@ -1679,7 +1713,7 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 245 "cminusSintSem.y"
+#line 280 "cminusSintSem.y"
     { 
         (yyval.tipo) = TYPE_INT;
     ;}
@@ -1688,7 +1722,7 @@ yyreduce:
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 248 "cminusSintSem.y"
+#line 283 "cminusSintSem.y"
     { 
         (yyval.tipo) = TYPE_VOID;
     ;}
@@ -1697,7 +1731,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 256 "cminusSintSem.y"
+#line 291 "cminusSintSem.y"
     {
         /* Análise semântica */
         insert_function_ctx(ctx, (yyvsp[(2) - (2)].id), (yyvsp[(1) - (2)].tipo), yylineno);
@@ -1712,7 +1746,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 266 "cminusSintSem.y"
+#line 301 "cminusSintSem.y"
     {
         leave_scope_ctx(ctx);
         
@@ -1739,28 +1773,28 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 291 "cminusSintSem.y"
+#line 326 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 292 "cminusSintSem.y"
+#line 327 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 293 "cminusSintSem.y"
+#line 328 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 299 "cminusSintSem.y"
+#line 334 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[(1) - (3)].node);
         if (t != NULL) {
@@ -1777,19 +1811,19 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 310 "cminusSintSem.y"
+#line 345 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 316 "cminusSintSem.y"
+#line 351 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(1) - (2)].tipo) == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro '%s' nao pode ser void\n",
-                    yylineno, (yyvsp[(2) - (2)].id));
+            fprintf(stderr, "ERRO SEMANTICO: parametro '%s' nao pode ser void - LINHA: %d\n",
+                    (yyvsp[(2) - (2)].id), yylineno);
             ctx->has_errors = 1;
         } else {
             insert_symbol_ctx(ctx, (yyvsp[(2) - (2)].id), (yyvsp[(1) - (2)].tipo), KIND_VAR, yylineno);
@@ -1815,12 +1849,12 @@ yyreduce:
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 342 "cminusSintSem.y"
+#line 377 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(1) - (4)].tipo) == TYPE_VOID) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: parametro array '%s' nao pode ser void\n",
-                    yylineno, (yyvsp[(2) - (4)].id));
+            fprintf(stderr, "ERRO SEMANTICO: parametro array '%s' nao pode ser void - LINHA: %d\n",
+                    (yyvsp[(2) - (4)].id), yylineno);
             ctx->has_errors = 1;
         } else {
             insert_symbol_ctx(ctx, (yyvsp[(2) - (4)].id), TYPE_INT_ARRAY, KIND_ARRAY, yylineno);
@@ -1846,7 +1880,7 @@ yyreduce:
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 372 "cminusSintSem.y"
+#line 407 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(COMPK);
         (yyval.node)->child[0] = (yyvsp[(2) - (4)].node);  /* declarações locais */
@@ -1858,7 +1892,7 @@ yyreduce:
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 382 "cminusSintSem.y"
+#line 417 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[(1) - (2)].node);
         if (t != NULL) {
@@ -1875,14 +1909,14 @@ yyreduce:
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 393 "cminusSintSem.y"
+#line 428 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 399 "cminusSintSem.y"
+#line 434 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[(1) - (2)].node);
         if (t != NULL) {
@@ -1899,56 +1933,56 @@ yyreduce:
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 410 "cminusSintSem.y"
+#line 445 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 415 "cminusSintSem.y"
+#line 450 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 416 "cminusSintSem.y"
+#line 451 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 417 "cminusSintSem.y"
+#line 452 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 418 "cminusSintSem.y"
+#line 453 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 419 "cminusSintSem.y"
+#line 454 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 423 "cminusSintSem.y"
+#line 458 "cminusSintSem.y"
     { enter_scope_ctx(ctx); ;}
     break;
 
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 425 "cminusSintSem.y"
+#line 460 "cminusSintSem.y"
     { 
         leave_scope_ctx(ctx);
         (yyval.node) = (yyvsp[(2) - (2)].node);
@@ -1958,28 +1992,28 @@ yyreduce:
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 433 "cminusSintSem.y"
+#line 468 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (2)].node); ;}
     break;
 
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 434 "cminusSintSem.y"
+#line 469 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 440 "cminusSintSem.y"
+#line 475 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(3) - (5)].node) && (yyvsp[(3) - (5)].node)->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do IF deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
-        
+
         /* Construção da AST */
         (yyval.node) = newStmtNode(IFK);
         (yyval.node)->child[0] = (yyvsp[(3) - (5)].node);    /* condição */
@@ -1992,14 +2026,14 @@ yyreduce:
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 455 "cminusSintSem.y"
+#line 490 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(3) - (7)].node) && (yyvsp[(3) - (7)].node)->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do IF deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do IF deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
-        
+
         /* Construção da AST */
         (yyval.node) = newStmtNode(IFK);
         (yyval.node)->child[0] = (yyvsp[(3) - (7)].node);    /* condição */
@@ -2012,11 +2046,11 @@ yyreduce:
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 474 "cminusSintSem.y"
+#line 509 "cminusSintSem.y"
     {
         /* Análise semântica */
         if ((yyvsp[(3) - (5)].node) && (yyvsp[(3) - (5)].node)->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: condicao do WHILE deve ser inteira\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: condicao do WHILE deve ser inteira - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
         
@@ -2031,7 +2065,7 @@ yyreduce:
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 492 "cminusSintSem.y"
+#line 527 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(RETURNK);
         (yyval.node)->child[0] = NULL;  /* sem expressão */
@@ -2042,7 +2076,7 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 498 "cminusSintSem.y"
+#line 533 "cminusSintSem.y"
     {
         (yyval.node) = newStmtNode(RETURNK);
         (yyval.node)->child[0] = (yyvsp[(2) - (3)].node);    /* expressão */
@@ -2053,18 +2087,18 @@ yyreduce:
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 508 "cminusSintSem.y"
+#line 543 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar var_type = (yyvsp[(1) - (3)].node) ? (yyvsp[(1) - (3)].node)->type : TYPE_ERROR;
         TipoVar exp_type = (yyvsp[(3) - (3)].node) ? (yyvsp[(3) - (3)].node)->type : TYPE_ERROR;
         
-        if ((yyvsp[(1) - (3)].node) && (yyvsp[(1) - (3)].node)->nodekind == VARK && (yyvsp[(1) - (3)].node)->kind.var.varKind == KIND_ARRAY && 
+        if ((yyvsp[(1) - (3)].node) && (yyvsp[(1) - (3)].node)->nodekind == VARK && (yyvsp[(1) - (3)].node)->kind.var.varKind == KIND_ARRAY &&
             (yyvsp[(1) - (3)].node)->child[0] == NULL) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: nao e possivel atribuir a array completo\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: nao e possivel atribuir a array completo - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         } else if (var_type != exp_type && exp_type != TYPE_ERROR && var_type != TYPE_ERROR) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: tipos incompativeis na atribuicao\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: tipos incompativeis na atribuicao - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         }
         
@@ -2080,21 +2114,21 @@ yyreduce:
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 529 "cminusSintSem.y"
+#line 564 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 535 "cminusSintSem.y"
+#line 570 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[(1) - (1)].id));
         TipoVar tipo = TYPE_ERROR;
         TipoSimbolo kind = KIND_VAR;
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, (yyvsp[(1) - (1)].id));
+            fprintf(stderr, "ERRO SEMANTICO: variavel '%s' nao declarada - LINHA: %d\n", (yyvsp[(1) - (1)].id), yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = s->tipo;
@@ -2120,19 +2154,19 @@ yyreduce:
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 563 "cminusSintSem.y"
+#line 598 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[(1) - (4)].id));
         TipoVar tipo = TYPE_ERROR;
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: variavel '%s' nao declarada\n", yylineno, (yyvsp[(1) - (4)].id));
+            fprintf(stderr, "ERRO SEMANTICO: variavel '%s' nao declarada - LINHA: %d\n", (yyvsp[(1) - (4)].id), yylineno);
             ctx->has_errors = 1;
         } else if (s->kind != KIND_ARRAY) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e um array\n", yylineno, (yyvsp[(1) - (4)].id));
+            fprintf(stderr, "ERRO SEMANTICO: '%s' nao e um array - LINHA: %d\n", (yyvsp[(1) - (4)].id), yylineno);
             ctx->has_errors = 1;
         } else if ((yyvsp[(3) - (4)].node) && (yyvsp[(3) - (4)].node)->type != TYPE_INT) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: indice de array deve ser inteiro\n", yylineno);
+            fprintf(stderr, "ERRO SEMANTICO: indice de array deve ser inteiro - LINHA: %d\n", yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = TYPE_INT;
@@ -2153,7 +2187,7 @@ yyreduce:
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 595 "cminusSintSem.y"
+#line 630 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[(1) - (3)].node) ? (yyvsp[(1) - (3)].node)->type : TYPE_ERROR;
@@ -2173,56 +2207,56 @@ yyreduce:
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 609 "cminusSintSem.y"
+#line 644 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 613 "cminusSintSem.y"
+#line 648 "cminusSintSem.y"
     { (yyval.ival) = LE; ;}
     break;
 
   case 46:
 
 /* Line 1455 of yacc.c  */
-#line 614 "cminusSintSem.y"
+#line 649 "cminusSintSem.y"
     { (yyval.ival) = LT; ;}
     break;
 
   case 47:
 
 /* Line 1455 of yacc.c  */
-#line 615 "cminusSintSem.y"
+#line 650 "cminusSintSem.y"
     { (yyval.ival) = GT; ;}
     break;
 
   case 48:
 
 /* Line 1455 of yacc.c  */
-#line 616 "cminusSintSem.y"
+#line 651 "cminusSintSem.y"
     { (yyval.ival) = GE; ;}
     break;
 
   case 49:
 
 /* Line 1455 of yacc.c  */
-#line 617 "cminusSintSem.y"
+#line 652 "cminusSintSem.y"
     { (yyval.ival) = EQ; ;}
     break;
 
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 618 "cminusSintSem.y"
+#line 653 "cminusSintSem.y"
     { (yyval.ival) = NE; ;}
     break;
 
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 624 "cminusSintSem.y"
+#line 659 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[(1) - (3)].node) ? (yyvsp[(1) - (3)].node)->type : TYPE_ERROR;
@@ -2242,28 +2276,28 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 638 "cminusSintSem.y"
+#line 673 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 642 "cminusSintSem.y"
+#line 677 "cminusSintSem.y"
     { (yyval.ival) = PLUS; ;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 643 "cminusSintSem.y"
+#line 678 "cminusSintSem.y"
     { (yyval.ival) = MINUS; ;}
     break;
 
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 649 "cminusSintSem.y"
+#line 684 "cminusSintSem.y"
     {
         /* Análise semântica */
         TipoVar t1 = (yyvsp[(1) - (3)].node) ? (yyvsp[(1) - (3)].node)->type : TYPE_ERROR;
@@ -2283,49 +2317,49 @@ yyreduce:
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 663 "cminusSintSem.y"
+#line 698 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 667 "cminusSintSem.y"
+#line 702 "cminusSintSem.y"
     { (yyval.ival) = TIMES; ;}
     break;
 
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 668 "cminusSintSem.y"
+#line 703 "cminusSintSem.y"
     { (yyval.ival) = DIVIDE; ;}
     break;
 
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 673 "cminusSintSem.y"
+#line 708 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(2) - (3)].node); ;}
     break;
 
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 674 "cminusSintSem.y"
+#line 709 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 61:
 
 /* Line 1455 of yacc.c  */
-#line 675 "cminusSintSem.y"
+#line 710 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 62:
 
 /* Line 1455 of yacc.c  */
-#line 677 "cminusSintSem.y"
+#line 712 "cminusSintSem.y"
     { 
         (yyval.node) = newExpNode(CONSTK);
         (yyval.node)->kind.var.attr.val = (yyvsp[(1) - (1)].ival);
@@ -2337,16 +2371,16 @@ yyreduce:
   case 63:
 
 /* Line 1455 of yacc.c  */
-#line 688 "cminusSintSem.y"
+#line 723 "cminusSintSem.y"
     {
         Simbolo *s = lookup_symbol_ctx(ctx, (yyvsp[(1) - (4)].id));
         TipoVar tipo = TYPE_INT;  /* padrão */
         
         if (!s) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: funcao '%s' nao declarada\n", yylineno, (yyvsp[(1) - (4)].id));
+            fprintf(stderr, "ERRO SEMANTICO: funcao '%s' nao declarada - LINHA: %d\n", (yyvsp[(1) - (4)].id), yylineno);
             ctx->has_errors = 1;
         } else if (s->kind != KIND_FUNC) {
-            fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' nao e uma funcao\n", yylineno, (yyvsp[(1) - (4)].id));
+            fprintf(stderr, "ERRO SEMANTICO: '%s' nao e uma funcao - LINHA: %d\n", (yyvsp[(1) - (4)].id), yylineno);
             ctx->has_errors = 1;
         } else {
             tipo = s->tipo;  /* tipo de retorno da função */
@@ -2365,21 +2399,21 @@ yyreduce:
   case 64:
 
 /* Line 1455 of yacc.c  */
-#line 714 "cminusSintSem.y"
+#line 749 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
   case 65:
 
 /* Line 1455 of yacc.c  */
-#line 715 "cminusSintSem.y"
+#line 750 "cminusSintSem.y"
     { (yyval.node) = NULL; ;}
     break;
 
   case 66:
 
 /* Line 1455 of yacc.c  */
-#line 721 "cminusSintSem.y"
+#line 756 "cminusSintSem.y"
     {
         TreeNode *t = (yyvsp[(1) - (3)].node);
         if (t != NULL) {
@@ -2396,14 +2430,14 @@ yyreduce:
   case 67:
 
 /* Line 1455 of yacc.c  */
-#line 732 "cminusSintSem.y"
+#line 767 "cminusSintSem.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 2407 "cminus.tab.c"
+#line 2441 "cminus.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2615,7 +2649,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 735 "cminusSintSem.y"
+#line 770 "cminusSintSem.y"
 
 
 /* ===== FUNÇÕES PARA GRAPHVIZ ===== */
@@ -3002,7 +3036,7 @@ void insert_symbol_ctx(ParserContext *ctx, const char *nome, TipoVar tipo, TipoS
     }
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -3025,7 +3059,7 @@ void insert_array_ctx(ParserContext *ctx, const char *nome, int tamanho, int lin
     if (!ctx->escopo_atual) return;
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -3046,7 +3080,7 @@ void insert_function_ctx(ParserContext *ctx, const char *nome, TipoVar tipo_reto
     if (!ctx->escopo_atual) return;
     
     if (lookup_symbol_current_ctx(ctx, nome)) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: '%s' ja declarado neste escopo\n", linha, nome);
+        fprintf(stderr, "ERRO SEMANTICO: identificador '%s' ja declarado neste escopo - LINHA: %d\n", nome, linha);
         ctx->has_errors = 1;
         return;
     }
@@ -3069,13 +3103,13 @@ TipoVar check_expression_type_ctx(ParserContext *ctx, const char *op, TipoVar t1
     }
     
     if (t1 == TYPE_VOID || t2 == TYPE_VOID) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s com tipo void\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: operacao %s com tipo void - LINHA: %d\n", op, linha);
         ctx->has_errors = 1;
         return TYPE_ERROR;
     }
-    
+
     if (t1 != TYPE_INT || t2 != TYPE_INT) {
-        fprintf(stderr, "ERRO SEMANTICO: linha %d: operacao %s requer operandos inteiros\n", linha, op);
+        fprintf(stderr, "ERRO SEMANTICO: operacao %s requer operandos inteiros - LINHA: %d\n", op, linha);
         ctx->has_errors = 1;
         return TYPE_ERROR;
     }
@@ -3376,8 +3410,8 @@ int main(int argc, char **argv) {
         printf("================================================================================\n");
         printf("                      ARVORE SINTATICA ABSTRATA (AST)\n");
         printf("================================================================================\n");
-        printTree(ctx->ast_root, 0);
-        printf("================================================================================\n");
+        /* printTree(ctx->ast_root, 0);
+        printf("================================================================================\n"); */
 
         printTreeDOT(ctx->ast_root, "ast.dot");
 
@@ -3398,6 +3432,68 @@ int main(int argc, char **argv) {
 }
 
 void yyerror(ParserContext *ctx, const char *s) {
-    fprintf(stderr, "Erro sintatico linha %d: %s\n", yylineno, s);
+    /* DEBUG: Mostra a mensagem original do Bison */
+    /* fprintf(stderr, "DEBUG BISON: %s\n", s); */
+
+    /* Processa a mensagem de erro do Bison para extrair informações úteis */
+    if (strstr(s, "unexpected") != NULL) {
+        char *msg = strdup(s);
+        char *unexpected_pos = strstr(msg, "unexpected ");
+        char *expecting_pos = strstr(msg, "expecting ");
+
+        if (unexpected_pos && expecting_pos) {
+            /* Formato: "syntax error, unexpected TOKEN, expecting TOKEN" */
+            char unexpected_raw[64] = "";
+            char expected_raw[256] = "";
+
+            sscanf(unexpected_pos, "unexpected %[^,]", unexpected_raw);
+            sscanf(expecting_pos, "expecting %[^\n]", expected_raw);
+
+            /* Traduz o token inesperado */
+            const char *unexpected_translated = translate_token(unexpected_raw);
+
+            /* Detecta casos especiais */
+            if (strstr(unexpected_raw, "$end") != NULL || strcmp(unexpected_raw, "$end") == 0) {
+                /* Fim de arquivo inesperado - geralmente significa algo não foi fechado */
+                fprintf(stderr, "ERRO SINTATICO: fim de arquivo inesperado, possivelmente falta fechar '}', ')' ou ']' - LINHA: %d\n", yylineno);
+            } else {
+                /* Processa múltiplos tokens esperados (separados por "or") */
+                char expected_translated[512] = "";
+                char *token_copy = strdup(expected_raw);
+                char *token = strtok(token_copy, " ");
+                int first = 1;
+
+                while (token != NULL) {
+                    if (strcmp(token, "or") != 0) {
+                        if (!first) {
+                            strcat(expected_translated, " ou ");
+                        }
+                        strcat(expected_translated, translate_token(token));
+                        first = 0;
+                    }
+                    token = strtok(NULL, " ");
+                }
+
+                fprintf(stderr, "ERRO SINTATICO: token inesperado %s, esperado %s - LINHA: %d\n",
+                        unexpected_translated, expected_translated, yylineno);
+                free(token_copy);
+            }
+        } else if (unexpected_pos) {
+            /* Apenas token inesperado */
+            char unexpected_raw[64] = "";
+            sscanf(unexpected_pos, "unexpected %s", unexpected_raw);
+            const char *unexpected_translated = translate_token(unexpected_raw);
+            fprintf(stderr, "ERRO SINTATICO: token inesperado %s - LINHA: %d\n",
+                    unexpected_translated, yylineno);
+        } else {
+            fprintf(stderr, "ERRO SINTATICO: %s - LINHA: %d\n", s, yylineno);
+        }
+
+        free(msg);
+    } else {
+        /* Mensagem genérica */
+        fprintf(stderr, "ERRO SINTATICO: %s - LINHA: %d\n", s, yylineno);
+    }
+
     ctx->has_errors = 1;
 }

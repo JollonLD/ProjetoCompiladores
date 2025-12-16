@@ -2,7 +2,7 @@
 
 int main(void) {
     int x;
-    void y;        /* ERRO: variável não pode ser void */
+    void @y;        /* ERRO: variável não pode ser void */
     int arr[10];
 
     x = 5;
@@ -18,8 +18,4 @@ int main(void) {
     x = arr[x];    /* OK */
 
     return x;
-}
-
-void soma(void a, void b) {  /* ERRO: parâmetros não podem ser void */
-    return a + b;
 }
