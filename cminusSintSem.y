@@ -3,6 +3,7 @@
     #include <stdlib.h>
     #include <string.h>
     #include "parser_context.h"
+    #include "cgen.h"
 
     extern int yylex(void);
     /* extern int yyparse(void); */
@@ -1495,6 +1496,9 @@ int main(int argc, char **argv) {
         printf("================================================================================\n");
 
         printTreeDOT(ctx->ast_root, "ast.dot");
+
+        /* Gera código intermediário (três endereços) */
+        codeGen(ctx->ast_root);
     }
 
     /* Libera todos os escopos e simbolos */
