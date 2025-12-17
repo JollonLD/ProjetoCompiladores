@@ -1,23 +1,21 @@
+/* parser_context.h - Contexto do Parser */
 #ifndef PARSER_CONTEXT_H
 #define PARSER_CONTEXT_H
 
 #include <stdio.h>
 
-typedef struct treeNode TreeNode;
-typedef struct Escopo Escopo;
+/* Declarações */
+struct treeNode;
+struct Escopo;
 
 typedef struct ParserContext {
-    /* AST */
-    TreeNode *ast_root;
-
-    /* Tabela de símbolos */
-    Escopo *escopo_atual;
-    Escopo *lista_escopos;
-
+    struct treeNode *ast_root;
+    struct Escopo *escopo_atual;
+    struct Escopo *lista_escopos;
     int has_errors;
 } ParserContext;
 
-ParserContext *parser_context_create();
+ParserContext* parser_context_create(void);
 void parser_context_destroy(ParserContext *ctx);
 
-#endif
+#endif /* PARSER_CONTEXT_H */

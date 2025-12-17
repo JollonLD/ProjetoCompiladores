@@ -12,6 +12,8 @@ LEX_SRC = cminusLex.l
 YACC_SRC = cminusSintSem.y
 CONTEXT_SRC = parser_context.c
 CONTEXT_HDR = parser_context.h
+CODEGEN_SRC = code_generator.c
+CODEGEN_HDR = code_generator.h
 
 # Arquivos gerados
 LEX_GEN = lex.yy.c
@@ -20,6 +22,7 @@ YACC_GEN_H = cminus.tab.h
 
 # Arquivos objeto
 CONTEXT_OBJ = parser_context.o
+CODEGEN_OBJ = code_generator.o
 LEX_OBJ = lex.yy.o
 YACC_OBJ = cminus.tab.o
 
@@ -34,16 +37,8 @@ all: check-headers $(TARGET)
 	@echo "Uso: ./$(TARGET) programa.cm"
 
 check-headers:
-	@if [ ! -f $(CONTEXT_HDR) ]; then \
-		echo "Arquivo $(CONTEXT_HDR) não encontrado!"; \
-		echo "Criando $(CONTEXT_HDR)..."; \
-		$(MAKE) create-context-header; \
-	fi
-	@if [ ! -f $(CONTEXT_SRC) ]; then \
-		echo "Arquivo $(CONTEXT_SRC) não encontrado!"; \
-		echo "Criando $(CONTEXT_SRC)..."; \
-		$(MAKE) create-context-source; \
-	fi
+	@test -f $(CONTEXT_HDR) || (echo "Arquivo $(CONTEXT_HDR) não encontrado!" && echo "Criando $(CONTEXT_HDR)..." && $(MAKE) create-context-header)
+	@test -f $(CONTEXT_SRC) || (echo "Arquivo $(CONTEXT_SRC) não encontrado!" && echo "Criando $(CONTEXT_SRC)..." && $(MAKE) create-context-source)
 
 # Cria o arquivo parser_context.h se não existir
 create-context-header:
@@ -103,6 +98,10 @@ $(YACC_GEN_C) $(YACC_GEN_H): $(YACC_SRC)
 $(CONTEXT_OBJ): $(CONTEXT_SRC) $(CONTEXT_HDR)
 	$(CC) $(CFLAGS) -c $(CONTEXT_SRC) -o $(CONTEXT_OBJ)
 
+# Compila code_generator.c
+$(CODEGEN_OBJ): $(CODEGEN_SRC) $(CODEGEN_HDR) $(YACC_GEN_H) $(CONTEXT_HDR)
+	$(CC) $(CFLAGS) -c $(CODEGEN_SRC) -o $(CODEGEN_OBJ)
+
 # Compila o analisador léxico
 $(LEX_OBJ): $(LEX_GEN)
 	$(CC) $(CFLAGS) -c $(LEX_GEN) -o $(LEX_OBJ)
@@ -112,56 +111,35 @@ $(YACC_OBJ): $(YACC_GEN_C) $(YACC_GEN_H) $(CONTEXT_HDR)
 	$(CC) $(CFLAGS) -c $(YACC_GEN_C) -o $(YACC_OBJ)
 
 # Compila o executável final
-$(TARGET): $(LEX_OBJ) $(YACC_OBJ) $(CONTEXT_OBJ)
-	$(CC) $(CFLAGS) -o $(TARGET) $(LEX_OBJ) $(YACC_OBJ) $(CONTEXT_OBJ)
+$(TARGET): $(LEX_OBJ) $(YACC_OBJ) $(CONTEXT_OBJ) $(CODEGEN_OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(LEX_OBJ) $(YACC_OBJ) $(CONTEXT_OBJ) $(CODEGEN_OBJ)
 
 # Limpa arquivos gerados
 clean:
 	rm -f $(LEX_GEN) $(YACC_GEN_C) $(YACC_GEN_H) $(TARGET)
-	rm -f $(CONTEXT_OBJ) $(YACC_OBJ) $(LEX_OBJ)
+	rm -f $(CONTEXT_OBJ) $(CODEGEN_OBJ) $(YACC_OBJ) $(LEX_OBJ)
 	rm -f *.exe *.o
 	rm -f ast.dot ast_*.dot ast.png ast_*.png ast.svg ast_*.svg
 
 # Limpa arquivos de contexto gerados automaticamente
 distclean: clean
-	@if [ -f $(CONTEXT_HDR) ]; then \
-		rm -f $(CONTEXT_HDR); \
-	fi
-	@if [ -f $(CONTEXT_SRC) ]; then \
-		rm -f $(CONTEXT_SRC); \
-	fi
+	@test -f $(CONTEXT_HDR) && rm -f $(CONTEXT_HDR) || true
+	@test -f $(CONTEXT_SRC) && rm -f $(CONTEXT_SRC) || true
 
 # Testa com um exemplo (crie um arquivo test.cm para testar)
 test: $(TARGET)
 	@echo "========================================="
 	@echo "Testando o compilador C-Minus..."
 	@echo "========================================="
-	@if [ -f test.cm ]; then \
-		./$(TARGET) test.cm; \
-	else \
-		echo "Arquivo test.cm não encontrado!"; \
-		echo "Crie um arquivo test.cm com código C-Minus para testar."; \
-	fi
+	@test -f test.cm && ./$(TARGET) test.cm || (echo "Arquivo test.cm não encontrado!" && echo "Crie um arquivo test.cm com código C-Minus para testar.")
 
 # Testa e gera visualização GraphViz
 test-graphviz: $(TARGET) test
 	@echo "========================================="
 	@echo "Testando com geração de visualização..."
 	@echo "========================================="
-	@if ! command -v $(DOT) > /dev/null; then \
-		echo "GraphViz (dot) não encontrado!"; \
-		echo "Instale com: sudo apt-get install graphviz"; \
-	fi
-	@if [ -f test_simple.cm ]; then \
-		echo "Teste: test_simple.cm"; \
-		./$(TARGET) test_simple.cm; \
-		if [ -f ast.dot ]; then \
-			echo "Gerando imagem PNG..."; \
-			$(DOT) -Tpng ast.dot -o ast.png 2>/dev/null && echo "ast.png gerado" || echo "Erro ao gerar PNG"; \
-			echo "Gerando imagem SVG..."; \
-			$(DOT) -Tsvg ast.dot -o ast.svg 2>/dev/null && echo "ast.svg gerado" || echo "Erro ao gerar SVG"; \
-		fi \
-	fi
+	@command -v $(DOT) > /dev/null || (echo "GraphViz (dot) não encontrado!" && echo "Instale com: sudo apt-get install graphviz")
+	@test -f test_simple.cm && (echo "Teste: test_simple.cm" && ./$(TARGET) test_simple.cm && (test -f ast.dot && (echo "Gerando imagem PNG..." && ($(DOT) -Tpng ast.dot -o ast.png 2>/dev/null && echo "ast.png gerado" || echo "Erro ao gerar PNG") && echo "Gerando imagem SVG..." && ($(DOT) -Tsvg ast.dot -o ast.svg 2>/dev/null && echo "ast.svg gerado" || echo "Erro ao gerar SVG")) || true)) || true
 
 # Testa com entrada padrão
 test-stdin: $(TARGET)
@@ -170,15 +148,7 @@ test-stdin: $(TARGET)
 
 # Verifica se GraphViz está instalado
 check-graphviz:
-	@if command -v $(DOT) > /dev/null; then \
-		echo "$(GREEN)✓ GraphViz instalado: $$($(DOT) -V 2>&1)$(NC)"; \
-	else \
-		echo "$(RED)✗ GraphViz não encontrado$(NC)"; \
-		echo "$(YELLOW)Instale com:$(NC)"; \
-		echo "  Ubuntu/Debian: sudo apt-get install graphviz"; \
-		echo "  Fedora: sudo dnf install graphviz"; \
-		echo "  macOS: brew install graphviz"; \
-	fi
+	@command -v $(DOT) > /dev/null && echo "✓ GraphViz instalado: $$($(DOT) -V 2>&1)" || (echo "✗ GraphViz não encontrado" && echo "Instale com:" && echo "  Ubuntu/Debian: sudo apt-get install graphviz" && echo "  Fedora: sudo dnf install graphviz" && echo "  macOS: brew install graphviz" && echo "  Windows: choco install graphviz ou baixe de https://graphviz.org/download/")
 
 # Recompila tudo do zero
 rebuild: clean all
@@ -189,9 +159,10 @@ info:
 	@echo "  Compilador C-Minus - Informações"
 	@echo "========================================="
 	@echo "Arquivos fonte:"
-	@echo "  Lexer:    $(LEX_SRC)"
-	@echo "  Parser:   $(YACC_SRC)"
-	@echo "  Contexto: $(CONTEXT_SRC), $(CONTEXT_HDR)"
+	@echo "  Lexer:         $(LEX_SRC)"
+	@echo "  Parser:        $(YACC_SRC)"
+	@echo "  Contexto:      $(CONTEXT_SRC), $(CONTEXT_HDR)"
+	@echo "  Gerador Código: $(CODEGEN_SRC), $(CODEGEN_HDR)"
 	@echo ""
 	@echo "Ferramentas:"
 	@echo "  Compilador C: $(CC)"
