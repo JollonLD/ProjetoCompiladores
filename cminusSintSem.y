@@ -48,7 +48,7 @@
 %}
 
 %expect 1
-%error-verbose
+%define parse.error verbose
 
 %parse-param {ParserContext *ctx}
 

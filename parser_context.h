@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Forward declarations */
-struct TreeNode;
+typedef struct treeNode TreeNode;
 struct Escopo;
 
 typedef struct ParserContext {
